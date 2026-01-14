@@ -9,6 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; }
+        .tab-content { height: calc(100vh - 120px); overflow-y: auto; }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -25,7 +26,7 @@
             <!-- Content Area -->
             <div class="flex-1 overflow-y-auto p-6 lg:p-8">
                 <!-- Active Tab Content -->
-                <div id="inputTab" class="space-y-8">
+                <div id="inputTab" class="tab-content space-y-8">
                     <!-- Form Card -->
                     <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                         <h3 class="text-xl font-black mb-6 text-slate-800">Input Data Mutasi PM</h3>
@@ -95,7 +96,7 @@
                 </div>
 
                 <!-- History Tab Content -->
-                <div id="historyTab" class="hidden space-y-8">
+                <div id="historyTab" class="hidden tab-content space-y-8">
                     <!-- Table Card -->
                     <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                         <h3 class="text-xl font-black mb-6 text-slate-800">Data Mutasi PM</h3>
@@ -125,12 +126,14 @@
                                         <th class="text-center p-4 font-black text-slate-600">Bulan Tahun</th>
                                         <th class="text-center p-4 font-black text-slate-600">Data PM</th>
                                         <th class="text-center p-4 font-black text-slate-600">Jumlah Akhir</th>
+                                        <th class="text-center p-4 font-black text-slate-600">Catatan</th>
+                                        <th class="text-center p-4 font-black text-slate-600">PDF</th>
                                         <th class="text-center p-4 font-black text-slate-600">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="dataTableBody" class="divide-y divide-slate-100">
                                     <tr>
-                                        <td colspan="5" class="p-8 text-center text-slate-500">
+                                        <td colspan="7" class="p-8 text-center text-slate-500">
                                             Belum ada data. Isi form di tab "Input Baru" untuk menambah data.
                                         </td>
                                     </tr>
@@ -198,6 +201,12 @@
             data.id = Date.now().toString();
             data.timestamp = new Date().toISOString();
 
+            // Handle PDF file
+            const pdfFile = formData.get('pdfFile');
+            if (pdfFile && pdfFile.name) {
+                data.pdf = URL.createObjectURL(pdfFile); // Simulasi URL untuk file
+            }
+
             dataList.push(data);
             updateTable();
 
@@ -218,7 +227,7 @@
             tbody.innerHTML = '';
 
             if (dataList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">Belum ada data. Isi form di tab "Input Baru" untuk menambah data.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">Belum ada data. Isi form di tab "Input Baru" untuk menambah data.</td></tr>';
                 return;
             }
 
@@ -255,6 +264,12 @@
                     </td>
                     <td class="p-6 text-center">
                         <div class="inline-block bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-sm font-black shadow-lg shadow-slate-200">${item.jumlahAkhir}</div>
+                    </td>
+                    <td class="p-6 text-center">
+                        <span class="text-slate-600 text-sm">${item.catatan || '-'}</span>
+                    </td>
+                    <td class="p-6 text-center">
+                        ${item.pdf ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 hover:text-blue-800 font-bold">Lihat PDF</a>` : '-'}
                     </td>
                     <td class="p-6 pr-10">
                         <div class="flex justify-end gap-3">

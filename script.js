@@ -136,7 +136,7 @@ function showPage(pageId) {
             <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                 <h3 class="text-xl font-black mb-4">Mutasi PM</h3>
                 <p class="text-slate-600 mb-4">Form mutasi PM ditampilkan di bawah:</p>
-                <iframe src="form_mutasi_static.html" width="100%" height="800" frameborder="0"></iframe>
+                <iframe src="form_mutasi_static.html" width="100%" height="600" frameborder="0"></iframe>
                 <p class="text-sm text-slate-500 mt-4">Catatan: Ini adalah versi statis untuk testing. Database akan diintegrasikan nanti.</p>
             </div>
         `,
