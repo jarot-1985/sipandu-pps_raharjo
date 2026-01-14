@@ -3,92 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Mutasi PM - Statis</title>
+    <title>Form Mutasi PM - Mirip Asli</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; }
     </style>
 </head>
-<body class="bg-slate-50 p-8">
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-black mb-8 text-slate-800">Form Mutasi PM</h1>
+<body class="bg-slate-50">
 
-        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-            <h2 class="text-xl font-black mb-6">Input Data Mutasi</h2>
+    <div class="flex h-screen">
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col">
+            <!-- Header -->
+            <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 flex justify-between items-center sticky top-0 z-20">
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Mutasi PM</h2>
+                <div class="text-[10px] font-black text-sky-600 uppercase tracking-tighter">Data Terbaru</div>
+            </header>
 
-            <form id="mutasiForm" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-600 mb-2">Unit Pelayanan</label>
-                        <select name="unitPelayanan" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" required>
-                            <option value="">Pilih Unit</option>
-                            <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
-                            <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
-                            <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
-                            <option value="RPS PMKS Gondang">RPS PMKS Gondang</option>
-                        </select>
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 lg:p-8">
+                <!-- Active Tab Content -->
+                <div id="inputTab" class="space-y-8">
+                    <!-- Form Card -->
+                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black mb-6 text-slate-800">Input Data Mutasi PM</h3>
+
+                        <form id="mutasiForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-600 mb-2">Unit Pelayanan</label>
+                                    <select name="unitPelayanan" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" required>
+                                        <option value="">Pilih Unit</option>
+                                        <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
+                                        <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
+                                        <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
+                                        <option value="RPS PMKS Gondang">RPS PMKS Gondang</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-600 mb-2">Bulan Tahun</label>
+                                    <input type="month" name="bulanTahun" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" required>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-600 mb-2">Jumlah Awal</label>
+                                    <input type="number" name="jumlahAwal" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" min="0" required>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-emerald-600 mb-2">PM Masuk</label>
+                                    <input type="number" name="pmMasuk" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" required>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-rose-600 mb-2">PM Keluar</label>
+                                    <input type="number" name="pmKeluar" class="w-full p-3 border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500" min="0" required>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-600 mb-2">Jumlah Akhir (Otomatis)</label>
+                                <input type="number" name="jumlahAkhir" id="jumlahAkhir" class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50" readonly>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-600 mb-2">Catatan</label>
+                                <textarea name="catatan" rows="4" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" placeholder="Tambahkan catatan jika diperlukan"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-600 mb-2">Upload PDF (Opsional)</label>
+                                <input type="file" name="pdfFile" accept=".pdf" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+
+                            <div class="flex gap-4">
+                                <button type="submit" class="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-600 transition-colors flex items-center gap-2">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                    Simpan Data
+                                </button>
+                                <button type="button" onclick="resetForm()" class="bg-slate-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">
+                                    Reset
+                                </button>
+                            </div>
+                        </form>
                     </div>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-slate-600 mb-2">Bulan Tahun</label>
-                        <input type="month" name="bulanTahun" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" required>
+                <!-- History Tab Content -->
+                <div id="historyTab" class="hidden space-y-8">
+                    <!-- Table Card -->
+                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black mb-6 text-slate-800">Data Mutasi PM</h3>
+
+                        <!-- Search and Filter -->
+                        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                            <div class="flex-1">
+                                <input type="text" id="searchInput" placeholder="Cari unit atau bulan..." class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+                            <div>
+                                <select id="filterUnit" class="w-full sm:w-48 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                                    <option value="Semua">Semua Unit</option>
+                                    <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
+                                    <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
+                                    <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
+                                    <option value="RPS PMKS Gondang">RPS PMKS Gondang</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left p-4 font-black text-slate-600">Unit Pelayanan</th>
+                                        <th class="text-center p-4 font-black text-slate-600">Bulan Tahun</th>
+                                        <th class="text-center p-4 font-black text-slate-600">Data PM</th>
+                                        <th class="text-center p-4 font-black text-slate-600">Jumlah Akhir</th>
+                                        <th class="text-center p-4 font-black text-slate-600">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableBody" class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td colspan="5" class="p-8 text-center text-slate-500">
+                                            Belum ada data. Isi form di tab "Input Baru" untuk menambah data.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-600 mb-2">Jumlah Awal</label>
-                        <input type="number" name="jumlahAwal" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" min="0" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-emerald-600 mb-2">PM Masuk</label>
-                        <input type="number" name="pmMasuk" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-rose-600 mb-2">PM Keluar</label>
-                        <input type="number" name="pmKeluar" class="w-full p-3 border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500" min="0" required>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-600 mb-2">Jumlah Akhir (Otomatis)</label>
-                    <input type="number" name="jumlahAkhir" id="jumlahAkhir" class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50" readonly>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-600 mb-2">Catatan</label>
-                    <textarea name="catatan" rows="4" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500" placeholder="Tambahkan catatan jika diperlukan"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-600 mb-2">Upload PDF (Opsional)</label>
-                    <input type="file" name="pdfFile" accept=".pdf" class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                </div>
-
-                <div class="flex gap-4">
-                    <button type="submit" class="bg-sky-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-sky-600 transition-colors">
-                        Simpan Data
-                    </button>
-                    <button type="button" onclick="resetForm()" class="bg-slate-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">
-                        Reset
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <div class="mt-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-            <h2 class="text-xl font-black mb-6">Data Mutasi (Simulasi)</h2>
-            <div id="dataList" class="space-y-4">
-                <p class="text-slate-500">Belum ada data. Isi form dan submit untuk melihat simulasi.</p>
             </div>
-        </div>
+        </main>
     </div>
 
+    <!-- Bottom Tab Navigation -->
+    <nav class="fixed bottom-10 left-1/2 -translate-x-1/2 w-[340px] bg-slate-900/90 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-2.5 rounded-[3rem] z-50 flex border border-white/10">
+        <button id="inputBtn" onclick="switchTab('input')" class="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-[2.5rem] transition-all duration-300 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+            <i data-lucide="plus" class="w-6 h-6"></i>
+            <span class="text-[8px] font-black uppercase tracking-[0.2em]">Input Baru</span>
+        </button>
+        <button id="historyBtn" onclick="switchTab('history')" class="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-[2.5rem] transition-all duration-300 text-slate-500 hover:text-slate-300">
+            <i data-lucide="layout-grid" class="w-6 h-6"></i>
+            <span class="text-[8px] font-black uppercase tracking-[0.2em]">Data Cloud</span>
+        </button>
+    </nav>
+
     <script>
+        let dataList = [];
+
+        // Switch tabs
+        function switchTab(tab) {
+            document.getElementById('inputTab').classList.toggle('hidden', tab !== 'input');
+            document.getElementById('historyTab').classList.toggle('hidden', tab !== 'history');
+
+            document.getElementById('inputBtn').classList.toggle('bg-emerald-500', tab === 'input');
+            document.getElementById('inputBtn').classList.toggle('text-white', tab === 'input');
+            document.getElementById('inputBtn').classList.toggle('shadow-lg', tab === 'input');
+            document.getElementById('inputBtn').classList.toggle('shadow-emerald-500/20', tab === 'input');
+            document.getElementById('inputBtn').classList.toggle('text-slate-500', tab !== 'input');
+
+            document.getElementById('historyBtn').classList.toggle('bg-emerald-500', tab === 'history');
+            document.getElementById('historyBtn').classList.toggle('text-white', tab === 'history');
+            document.getElementById('historyBtn').classList.toggle('shadow-lg', tab === 'history');
+            document.getElementById('historyBtn').classList.toggle('shadow-emerald-500/20', tab === 'history');
+            document.getElementById('historyBtn').classList.toggle('text-slate-500', tab !== 'history');
+        }
+
         // Kalkulasi otomatis jumlah akhir
         document.querySelectorAll('input[name="jumlahAwal"], input[name="pmMasuk"], input[name="pmKeluar"]').forEach(input => {
             input.addEventListener('input', calculateAkhir);
@@ -108,18 +195,11 @@
 
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
+            data.id = Date.now().toString();
+            data.timestamp = new Date().toISOString();
 
-            // Simulasi penyimpanan (tanpa database)
-            const dataItem = document.createElement('div');
-            dataItem.className = 'p-4 border border-slate-200 rounded-xl';
-            dataItem.innerHTML = `
-                <h3 class="font-bold">${data.unitPelayanan} - ${data.bulanTahun}</h3>
-                <p>Awal: ${data.jumlahAwal}, Masuk: ${data.pmMasuk}, Keluar: ${data.pmKeluar}, Akhir: ${data.jumlahAkhir}</p>
-                <p>Catatan: ${data.catatan || 'Tidak ada'}</p>
-                <p class="text-sm text-slate-500">PDF: ${data.pdfFile ? data.pdfFile.name : 'Tidak ada'}</p>
-            `;
-
-            document.getElementById('dataList').appendChild(dataItem);
+            dataList.push(data);
+            updateTable();
 
             // Reset form
             this.reset();
@@ -132,7 +212,113 @@
             document.getElementById('jumlahAkhir').value = '';
         }
 
-        // Init icons
+        // Update table
+        function updateTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            if (dataList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">Belum ada data. Isi form di tab "Input Baru" untuk menambah data.</td></tr>';
+                return;
+            }
+
+            dataList.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/80 transition-all group';
+                row.innerHTML = `
+                    <td class="p-6 pl-10">
+                        <div class="flex flex-col">
+                            <span class="font-black text-sm text-slate-800 uppercase tracking-tight group-hover:text-emerald-600 transition-colors">${item.unitPelayanan}</span>
+                            <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase">ID: ${item.id.slice(-8)}</span>
+                        </div>
+                    </td>
+                    <td class="p-6 text-center">
+                        <span class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider">${item.bulanTahun}</span>
+                    </td>
+                    <td class="p-6">
+                        <div class="flex items-center justify-center gap-4">
+                            <div class="text-center">
+                                <p class="text-[8px] font-black text-slate-300 uppercase">Awal</p>
+                                <p class="font-bold text-slate-600">${item.jumlahAwal}</p>
+                            </div>
+                            <div class="w-px h-6 bg-slate-100"></div>
+                            <div class="text-center">
+                                <p class="text-[8px] font-black text-emerald-400 uppercase">Masuk</p>
+                                <p class="font-bold text-emerald-600">+${item.pmMasuk}</p>
+                            </div>
+                            <div class="w-px h-6 bg-slate-100"></div>
+                            <div class="text-center">
+                                <p class="text-[8px] font-black text-rose-400 uppercase">Keluar</p>
+                                <p class="font-bold text-rose-600">-${item.pmKeluar}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-6 text-center">
+                        <div class="inline-block bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-sm font-black shadow-lg shadow-slate-200">${item.jumlahAkhir}</div>
+                    </td>
+                    <td class="p-6 pr-10">
+                        <div class="flex justify-end gap-3">
+                            <button onclick="editData('${item.id}')" class="p-3 text-blue-600 bg-blue-50 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Edit Data">
+                                <i data-lucide="edit-3" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="deleteData('${item.id}')" class="p-3 text-rose-600 bg-rose-50 rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Hapus Data">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Re-init icons for new elements
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        function editData(id) {
+            const item = dataList.find(d => d.id === id);
+            if (item) {
+                // Fill form with data
+                Object.keys(item).forEach(key => {
+                    const input = document.querySelector(`[name="${key}"]`);
+                    if (input) input.value = item[key];
+                });
+                calculateAkhir();
+                switchTab('input');
+            }
+        }
+
+        function deleteData(id) {
+            if (confirm('Hapus data ini?')) {
+                dataList = dataList.filter(d => d.id !== id);
+                updateTable();
+            }
+        }
+
+        // Search and filter
+        document.getElementById('searchInput').addEventListener('input', filterTable);
+        document.getElementById('filterUnit').addEventListener('change', filterTable);
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterUnit = document.getElementById('filterUnit').value;
+
+            const rows = document.querySelectorAll('#dataTableBody tr');
+            rows.forEach(row => {
+                if (row.cells.length === 1) return; // Skip empty message row
+
+                const unit = row.cells[0].textContent.toLowerCase();
+                const bulan = row.cells[1].textContent.toLowerCase();
+
+                const matchesSearch = unit.includes(searchTerm) || bulan.includes(searchTerm);
+                const matchesFilter = filterUnit === 'Semua' || unit.includes(filterUnit.toLowerCase());
+
+                row.style.display = matchesSearch && matchesFilter ? '' : 'none';
+            });
+        }
+
+        // Init
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
