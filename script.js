@@ -1,6 +1,6 @@
 let isSidebarOpen = true;
 
-// Penyimpanan sementara (simulasi database) untuk halaman Mutasi PM
+// Penyimpanan sementara (simulasi database) untuk halaman Mutasi PM.
 let mutasiDataList = [];
 
 function toggleSidebar() {
