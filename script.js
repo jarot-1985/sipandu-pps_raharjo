@@ -209,19 +209,29 @@ function showPage(pageId) {
                 </div>
 
                 <div id="mutasiHistoryTab" class="hidden bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-                    <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex flex-col lg:flex-row gap-4">
                         <div class="flex-1 relative">
                             <i data-lucide="search" class="w-4 h-4 text-slate-300 absolute left-4 top-1/2 -translate-y-1/2"></i>
                             <input id="mutasiSearch" type="text" placeholder="Cari unit atau periode..." class="w-full pl-10 pr-4 py-3 bg-sky-50 border-2 border-transparent focus:border-sky-200 rounded-2xl text-xs font-bold outline-none transition-all" />
                         </div>
-                        <div>
-                            <select id="mutasiFilterUnit" class="w-full sm:w-60 p-3.5 bg-violet-50 border-2 border-transparent focus:border-violet-200 rounded-2xl text-xs font-black uppercase outline-none cursor-pointer">
+                        <div class="lg:w-60">
+                            <select id="mutasiFilterUnit" class="w-full p-3.5 bg-violet-50 border-2 border-transparent focus:border-violet-200 rounded-2xl text-xs font-black uppercase outline-none cursor-pointer">
                                 <option value="Semua">Semua Unit</option>
                                 <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
                                 <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
                                 <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
                                 <option value="RPS PMKS Gondang">RPS PMKS Gondang</option>
                             </select>
+                        </div>
+                        <div class="flex items-end gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Periode Dari</label>
+                                <input id="mutasiFilterStart" type="month" class="w-full p-3.5 bg-emerald-50 border-2 border-transparent focus:border-emerald-200 rounded-2xl text-xs font-bold outline-none transition-all" />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sampai</label>
+                                <input id="mutasiFilterEnd" type="month" class="w-full p-3.5 bg-emerald-50 border-2 border-transparent focus:border-emerald-200 rounded-2xl text-xs font-bold outline-none transition-all" />
+                            </div>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -323,6 +333,8 @@ function initMutasiForm() {
     const tableBody = document.getElementById('mutasiTableBody');
     const searchEl = document.getElementById('mutasiSearch');
     const filterEl = document.getElementById('mutasiFilterUnit');
+    const filterStartEl = document.getElementById('mutasiFilterStart');
+    const filterEndEl = document.getElementById('mutasiFilterEnd');
     let editingId = null;
 
     if (!form || !tabInput || !tabHistory) return;
@@ -397,11 +409,24 @@ function initMutasiForm() {
     function matchFilter(item) {
         const q = ((searchEl && searchEl.value) ? searchEl.value : '').toLowerCase();
         const unit = (item.unitPelayanan || '').toLowerCase();
-        const periode = (item.bulanTahun || '').toLowerCase();
+        const periode = (item.bulanTahun || '');
         const unitFilter = (filterEl && filterEl.value) ? filterEl.value : 'Semua';
-        const searchOk = unit.includes(q) || periode.includes(q);
+        const start = (filterStartEl && filterStartEl.value) ? filterStartEl.value : '';
+        const end = (filterEndEl && filterEndEl.value) ? filterEndEl.value : '';
+
+        const searchOk = unit.includes(q) || periode.toLowerCase().includes(q);
         const unitOk = unitFilter === 'Semua' || item.unitPelayanan === unitFilter;
-        return searchOk && unitOk;
+
+        let periodOk = true;
+        if (start && end) {
+            periodOk = (periode >= start && periode <= end);
+        } else if (start) {
+            periodOk = (periode === start);
+        } else if (end) {
+            periodOk = (periode === end);
+        }
+
+        return searchOk && unitOk && periodOk;
     }
 
     function renderTable() {
@@ -493,6 +518,8 @@ function initMutasiForm() {
 
     if (searchEl) searchEl.addEventListener('input', renderTable);
     if (filterEl) filterEl.addEventListener('change', renderTable);
+    if (filterStartEl) filterStartEl.addEventListener('change', renderTable);
+    if (filterEndEl) filterEndEl.addEventListener('change', renderTable);
 
     calculateMutasiAkhir();
     renderTable();
