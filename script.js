@@ -46,7 +46,7 @@ function showPage(pageId) {
     if (activeBtn) activeBtn.classList.add('active-menu');
     
     const displayTitle = pageId.replace(/-/g, ' ').toUpperCase();
-    document.getElementById('page-title-display').innerText = displayTitle === 'DASHBOARD' ? 'Dashboard Utama' : displayTitle;
+    document.getElementById('page-title-display').innerText = displayTitle === 'DASHBOARD' ? 'Dashboard' : displayTitle;
 
     // Konten dinamis untuk setiap halaman
     const pageContents = {
@@ -54,8 +54,9 @@ function showPage(pageId) {
             <!-- Hero Section -->
             <div class="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-sky-200">
                 <div class="relative z-10 max-w-lg">
-                    <h3 class="text-2xl font-black mb-2 uppercase tracking-tight">Si PANDU Dashboard</h3>
-                    <p class="text-sky-100 text-sm leading-relaxed mb-6 font-medium">Sistem Informasi Penyimpanan Data Terpadu PPS Raharjo Sragen. Akses data internal secara cepat dan efisien.</p>
+                    <h3 class="text-2xl font-black mb-2 uppercase tracking-tight">Si PANDU</h3>
+                    <p class="text-sky-100 text-sm leading-relaxed mb-6 font-medium">Sistem Informasi Penyimpanan Data Terpadu PPS Raharjo Sragen. <br>
+                    Akses data internal secara cepat dan efisien.</p>
                     <div class="flex space-x-3">
                         <div class="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/20 rounded-lg text-[10px] font-bold uppercase tracking-widest">Status: Aktif</div>
                     </div>
