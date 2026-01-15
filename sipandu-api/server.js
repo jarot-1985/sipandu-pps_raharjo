@@ -29,8 +29,11 @@ const morgan = require('morgan');
 const multer = require('multer');
 const dotenv = require('dotenv');
 const { MongoClient, ObjectId } = require('mongodb');
+const cloudinary = require('cloudinary').v2;
 
 dotenv.config({ path: path.join(__dirname, '.env') });
+// Cloudinary will read credentials from CLOUDINARY_URL
+cloudinary.config({ secure: true });
 
 const PORT = process.env.PORT || 4000;
 const MONGODB_URI = process.env.MONGODB_URI || '';
@@ -50,16 +53,9 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer for PDF uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const safe = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
-    cb(null, `${Date.now()}_${safe}`);
-  }
-});
+// Multer for PDF uploads (memory storage for Cloudinary upload)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== 'application/pdf') return cb(new Error('Only PDF allowed'));
@@ -88,10 +84,29 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', db: !!db, time: new Date().toISOString() });
 });
 
-app.post('/upload', upload.single('pdf'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ pdfUrl, pdfName: req.file.originalname });
+app.post('/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const originalName = req.file.originalname || 'document.pdf';
+    const baseName = path.parse(originalName).name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const folder = 'sipandu/mutasi_pm';
+
+    // Upload as data URI to Cloudinary (resource_type raw for PDF)
+    const b64 = req.file.buffer.toString('base64');
+    const dataUri = `data:application/pdf;base64,${b64}`;
+
+    const result = await cloudinary.uploader.upload(dataUri, {
+      resource_type: 'raw',
+      folder,
+      public_id: `${Date.now()}_${baseName}`,
+      overwrite: true
+    });
+
+    return res.json({ pdfUrl: result.secure_url, pdfName: originalName, publicId: result.public_id });
+  } catch (err) {
+    console.error('Cloudinary upload error:', err);
+    return res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
 // Helpers

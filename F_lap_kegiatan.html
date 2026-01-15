@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Laporan Personal - Jawa Tengah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .form-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .input-field {
+            transition: all 0.2s;
+            border: 1.5px solid #e2e8f0;
+        }
+        .input-field:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .photo-item {
+            aspect-ratio: 1/1;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #e2e8f0;
+        }
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="main-ui-container max-w-[1500px] mx-auto space-y-8">
+        
+        <!-- FORMULIR INPUT -->
+        <div class="form-card p-6 md:p-8 no-print border border-slate-200 max-w-[90%] mx-auto">
+            <div class="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                <div>
+                    <h1 id="formTitle" class="text-2xl font-bold text-slate-800 tracking-tight">Input Laporan Personal</h1>
+                    <p class="text-sm text-slate-500 mt-1">Lengkapi detail kegiatan dan unggah dokumentasi wajib (4 Foto).</p>
+                </div>
+                <div id="editBadge" class="hidden px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-xs font-bold ring-1 ring-amber-200 animate-pulse">
+                    <i class="fas fa-edit mr-1"></i> MODE EDIT
+                </div>
+            </div>
+
+            <form id="laporanForm" class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <input type="hidden" id="editId">
+                
+                <!-- Baris 1: Informasi Dasar -->
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit Pelayanan</label>
+                    <select id="unit_pelayanan" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm">
+                        <option value="" disabled selected>Pilih Unit</option>
+                        <option>PPSDI Raharjo Sragen</option>
+                        <option>RPSLU Mojomulyo Sragen</option>
+                        <option>RPSA Pamardi Siwi Sragen</option>
+                        <option>RPS PMKS Gondang</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Tanggal Kegiatan</label>
+                    <input type="date" id="tanggal_kegiatan" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm">
+                </div>
+
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Jenis Kegiatan</label>
+                    <select id="jenis_kegiatan" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm">
+                        <option value="" disabled selected>Pilih Jenis</option>
+                        <option>Rapat/Koordinasi SKPD</option>
+                        <option>Reunifikasi</option>
+                        <option>Asesmen PMKS</option>
+                        <option>Monitoring & Evaluasi</option>
+                        <option>Kegiatan Lainnya</option>
+                    </select>
+                </div>
+
+                <!-- Baris 2: Judul Kegiatan -->
+                <div class="md:col-span-12">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nama Kegiatan</label>
+                    <input type="text" id="nama_kegiatan" placeholder="Masukkan detail nama atau agenda kegiatan secara lengkap..." required class="block w-full px-4 py-3 rounded-xl bg-slate-50 input-field text-sm font-semibold text-slate-800">
+                </div>
+
+                <!-- Baris 3: Lokasi Sejajar -->
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Kabupaten / Kota</label>
+                    <select id="kabupaten" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm">
+                        <option value="" disabled selected>Pilih Kabupaten</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Kecamatan</label>
+                    <select id="kecamatan" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm" disabled>
+                        <option value="" disabled selected>Pilih Kecamatan</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Kelurahan / Desa</label>
+                    <select id="kelurahan" required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm" disabled>
+                        <option value="" disabled selected>Pilih Kelurahan</option>
+                    </select>
+                </div>
+
+                <!-- Baris 4: Detail Alamat & Keterangan -->
+                <div class="md:col-span-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Alamat Detail (RT/RW/Jalan)</label>
+                    <textarea id="alamat_lengkap" rows="3" placeholder="Sebutkan detail lokasi..." required class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm"></textarea>
+                </div>
+
+                <div class="md:col-span-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Keterangan / Hasil Kegiatan</label>
+                    <textarea id="keterangan" rows="3" placeholder="Tuliskan ringkasan atau hasil penting..." class="block w-full px-4 py-2.5 rounded-xl bg-slate-50 input-field text-sm"></textarea>
+                </div>
+
+                <!-- Section 2: Foto (Wajib 4) -->
+                <div class="md:col-span-12 space-y-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-sm font-bold text-slate-700">Dokumentasi Foto <span class="text-red-500">(Wajib 4 Foto)</span></label>
+                        <span id="photoCounter" class="text-xs font-bold px-2 py-1 bg-white rounded-lg border border-blue-200 text-blue-600">0 / 4</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label id="uploadLabel" class="cursor-pointer bg-white border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition p-4 rounded-xl flex flex-col items-center justify-center w-32 h-32 flex-shrink-0">
+                            <i class="fas fa-camera text-slate-400 text-xl mb-2"></i>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Tambah Foto</span>
+                            <input type="file" id="photoInput" accept="image/*" multiple class="hidden" onchange="handlePhotoUpload(this)">
+                        </label>
+                        <div id="photoPreviewContainer" class="flex gap-2 flex-wrap"></div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Pengikut & Pelapor -->
+                <div class="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                    <div class="space-y-3">
+                        <label class="block text-sm font-semibold text-slate-700">Pengikut Kegiatan</label>
+                        <div id="pengikutContainer" class="space-y-2"></div>
+                        <button type="button" onclick="addPengikutInput()" class="inline-flex items-center px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition border border-blue-200">
+                            <i class="fas fa-plus mr-2"></i> TAMBAH PENGIKUT
+                        </button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-sm font-semibold text-slate-700">Nama Pelapor</label>
+                        <input type="text" id="nama_pelapor" placeholder="Masukkan nama lengkap pelapor..." required class="block w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm font-bold shadow-sm">
+                    </div>
+                </div>
+
+                <!-- Section 4: Aksi -->
+                <div class="md:col-span-12 flex gap-3 pt-4">
+                    <button type="submit" id="btnSubmit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> <span id="btnText">Simpan Laporan</span>
+                    </button>
+                    <button type="button" id="btnCancel" onclick="resetFormState()" class="hidden px-6 py-3 border-2 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition font-bold">Batal</button>
+                    <button type="reset" id="btnReset" onclick="resetFormState()" class="px-6 py-3 border-2 border-slate-200 text-slate-400 rounded-xl hover:bg-slate-50 transition font-bold">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABEL DATA -->
+        <div class="form-card p-6 md:p-8 overflow-hidden border border-slate-200 w-full">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 no-print">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <span class="w-2 h-8 bg-blue-600 rounded-full mr-3"></span>
+                    Riwayat Laporan
+                </h2>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center shadow-sm hover:bg-emerald-700 transition">
+                        <i class="fas fa-file-excel mr-2"></i> EXCEL
+                    </button>
+                    <input type="text" id="searchInput" placeholder="Cari data..." class="px-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 bg-slate-50">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-xl">
+                <table id="reportTable" class="w-full text-left bg-white text-[11px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase text-center w-12">No</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase w-48">Waktu & Unit</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase w-64">Nama Kegiatan</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase w-48">Pelapor</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase w-48">Lokasi</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase">Hasil</th>
+                            <th class="px-3 py-4 font-bold text-slate-500 uppercase text-center w-36 no-print">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 font-medium text-slate-700"></tbody>
+                </table>
+            </div>
+            <div id="rowCountDisplay" class="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider no-print"></div>
+        </div>
+    </div>
+
+    <script>
+        const wilayahData = {
+            "Kab. Sragen": ["Sragen", "Karangmalang", "Masaran", "Gondang", "Sambirejo", "Plupuh", "Gemolong", "Kalijambe", "Kedawung", "Miri", "Tanon", "Ngrampal", "Sidoharjo", "Jenar", "Tangen", "Gesi", "Sukodono", "Mondokan", "Sumberlawang", "Sambungmacan"],
+            "Kab. Karanganyar": ["Karanganyar", "Colomadu", "Gondangrejo", "Jaten", "Karangpandan", "Kebakkramat", "Matesih", "Ngargoyoso", "Tawangmangu", "Jatipuro", "Jatiyoso", "Jumantono", "Jumapolo", "Kerjo", "Mojogedang", "Tasikmadu", "Jenawi"],
+            "Kab. Boyolali": ["Boyolali", "Ampel", "Banyudono", "Cepogo", "Musuk", "Ngemplak", "Selo", "Teras", "Simo", "Karanggede", "Kemusu", "Andong", "Nogosari", "Sambi", "Ngablak", "Gladagsari", "Wonosegoro", "Wonosamodro", "Tamansari", "Juwangi"],
+            "Kab. Sukoharjo": ["Sukoharjo", "Baki", "Bendosari", "Gatak", "Grogol", "Kartasura", "Mojolaban", "Nguter", "Polokarto", "Weru", "Bulru", "Tawangsari"],
+            "Kab. Klaten": ["Klaten Utara", "Klaten Tengah", "Klaten Selatan", "Ceper", "Delanggu", "Gantiwarno", "Jatinom", "Jogonalan", "Kalikotes", "Karanganom", "Karangdowo", "Karangnongko", "Kebonarum", "Kemalang", "Manisrenggo", "Ngawen", "Pedan", "Polanharjo", "Prambanan", "Trucuk", "Tulung", "Wedi", "Wonosari", "Bayat", "Cawas", "Juwiring"],
+            "Kab. Wonogiri": ["Wonogiri", "Baturetno", "Giriwoyo", "Giritontro", "Jatisrono", "Jatiroto", "Karangtengah", "Kismantoro", "Manyaran", "Ngadirojo", "Nguntoronadi", "Paranggupito", "Pracimantoro", "Puhpelem", "Purwantoro", "Selogiri", "Sidhorejo", "Slogohimo", "Tirtomoyo", "Bulukerto", "Eromoko", "Girimarto", "Manyaran"],
+            "Kota Surakarta": ["Banjarsari", "Jebres", "Laweyan", "Pasar Kliwon", "Serengan"],
+            "Kota Semarang": ["Semarang Tengah", "Semarang Utara", "Semarang Timur", "Semarang Selatan", "Semarang Barat", "Gayamsari", "Genuk", "Pedurungan", "Candisari", "Gajahmungkur", "Tembalang", "Banyumanik", "Gunungpati", "Ngaliyan", "Mijen", "Tugu"]
+        };
+
+        let dataLaporan = JSON.parse(localStorage.getItem('db_laporan_personal_v4')) || [];
+        let isEditing = false;
+        let uploadedPhotos = [];
+
+        const kabSelect = document.getElementById('kabupaten');
+        const kecSelect = document.getElementById('kecamatan');
+        const kelSelect = document.getElementById('kelurahan');
+        const tableBody = document.getElementById('tableBody');
+        const form = document.getElementById('laporanForm');
+        const inputNamaPelapor = document.getElementById('nama_pelapor');
+        const pengikutContainer = document.getElementById('pengikutContainer');
+        const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+        const photoCounter = document.getElementById('photoCounter');
+        const uploadLabel = document.getElementById('uploadLabel');
+
+        function handlePhotoUpload(input) {
+            const files = Array.from(input.files);
+            files.forEach(file => {
+                if (uploadedPhotos.length < 4) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedPhotos.push(e.target.result);
+                        renderPhotoPreviews();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            input.value = "";
+        }
+
+        function renderPhotoPreviews() {
+            photoPreviewContainer.innerHTML = '';
+            uploadedPhotos.forEach((src, idx) => {
+                const div = document.createElement('div');
+                div.className = "photo-item group w-32 h-32";
+                div.innerHTML = `
+                    <img src="${src}">
+                    <button type="button" onclick="uploadedPhotos.splice(${idx},1);renderPhotoPreviews()" class="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        <i class="fas fa-times text-[10px]"></i>
+                    </button>
+                `;
+                photoPreviewContainer.appendChild(div);
+            });
+
+            const count = uploadedPhotos.length;
+            photoCounter.innerText = `${count} / 4`;
+            if (count >= 4) {
+                uploadLabel.classList.add('hidden');
+                photoCounter.className = "text-xs font-bold px-2 py-1 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-600";
+            } else {
+                uploadLabel.classList.remove('hidden');
+                photoCounter.className = "text-xs font-bold px-2 py-1 bg-white rounded-lg border border-blue-200 text-blue-600";
+            }
+        }
+
+        function addPengikutInput(val = '') {
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center animate-in slide-in-from-left duration-200";
+            div.innerHTML = `
+                <input type="text" placeholder="Nama Pengikut..." class="pengikut-input block w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500" value="${val}">
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 p-2 transition">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `;
+            pengikutContainer.appendChild(div);
+        }
+
+        function resetFormState() {
+            isEditing = false; 
+            uploadedPhotos = []; 
+            renderPhotoPreviews(); 
+            pengikutContainer.innerHTML = '';
+            document.getElementById('editBadge').classList.add('hidden');
+            document.getElementById('btnCancel').classList.add('hidden');
+            document.getElementById('btnText').innerText = "Simpan Laporan";
+            kecSelect.disabled = kelSelect.disabled = true;
+            form.reset();
+            const last = localStorage.getItem('last_reporter_name');
+            if(last) inputNamaPelapor.value = last;
+        }
+
+        function initApp() {
+            const last = localStorage.getItem('last_reporter_name');
+            if(last) inputNamaPelapor.value = last;
+
+            Object.keys(wilayahData).sort().forEach(kab => {
+                const opt = document.createElement('option');
+                opt.value = kab; opt.textContent = kab;
+                kabSelect.appendChild(opt);
+            });
+
+            kabSelect.onchange = function() {
+                kecSelect.innerHTML = '<option value="" disabled selected>Pilih Kecamatan</option><option value="-">-</option>';
+                kecSelect.disabled = false;
+                if(this.value !== "-") {
+                    wilayahData[this.value].sort().forEach(kec => {
+                        const opt = document.createElement('option');
+                        opt.value = kec; opt.textContent = kec;
+                        kecSelect.appendChild(opt);
+                    });
+                }
+                kelSelect.disabled = true;
+            };
+
+            kecSelect.onchange = function() {
+                kelSelect.innerHTML = '<option value="" disabled selected>Pilih Kelurahan</option>';
+                kelSelect.disabled = false;
+                ["-", "Kelurahan I", "Kelurahan II", "Desa Jaya"].forEach(kel => {
+                    const opt = document.createElement('option');
+                    opt.value = kel; opt.textContent = kel;
+                    kelSelect.appendChild(opt);
+                });
+            };
+            renderTable();
+        }
+
+        function renderTable(filter = '') {
+            tableBody.innerHTML = '';
+            const filtered = dataLaporan.filter(d => 
+                Object.values(d).some(v => v ? v.toString().toLowerCase().includes(filter.toLowerCase()) : false)
+            );
+
+            filtered.forEach((d, i) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-50";
+                tr.innerHTML = `
+                    <td class="px-3 py-4 text-center text-slate-300 font-bold">${i+1}</td>
+                    <td class="px-3 py-4">
+                        <div class="font-bold text-slate-800">${d.tanggal_kegiatan}</div>
+                        <div class="text-[9px] text-slate-400 uppercase">${d.unit_pelayanan}</div>
+                    </td>
+                    <td class="px-3 py-4">
+                        <div class="text-[9px] font-bold text-blue-500 uppercase mb-1">${d.jenis_kegiatan}</div>
+                        <div class="text-sm font-extrabold text-slate-900 leading-tight">${d.nama_kegiatan}</div>
+                    </td>
+                    <td class="px-3 py-4 font-bold text-slate-800">${d.nama_pelapor}</td>
+                    <td class="px-3 py-4">
+                        <div class="text-slate-800 font-bold">${d.kabupaten}</div>
+                        <div class="text-[9px] text-slate-400 truncate w-40">${d.alamat_lengkap}</div>
+                    </td>
+                    <td class="px-3 py-4">
+                        <div class="text-slate-600 line-clamp-2 text-[10px]">${d.keterangan || '-'}</div>
+                    </td>
+                    <td class="px-3 py-4 text-center whitespace-nowrap space-x-1 no-print">
+                        <button onclick="printItem(${d.id})" title="Cetak Laporan F4" class="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition border border-transparent hover:border-emerald-200">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button onclick="editItem(${d.id})" class="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteItem(${d.id})" class="text-slate-300 hover:text-red-500 p-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            document.getElementById('rowCountDisplay').innerText = `TOTAL: ${filtered.length} LAPORAN`;
+        }
+
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            if (uploadedPhotos.length < 4) {
+                alert("Peringatan: Dokumentasi foto harus berjumlah 4 foto.");
+                return;
+            }
+            const pengikutData = Array.from(document.querySelectorAll('.pengikut-input')).map(i => i.value).filter(v => v.trim() !== '');
+            const payload = {
+                id: isEditing ? parseInt(document.getElementById('editId').value) : Date.now(),
+                nama_pelapor: inputNamaPelapor.value,
+                unit_pelayanan: document.getElementById('unit_pelayanan').value,
+                tanggal_kegiatan: document.getElementById('tanggal_kegiatan').value,
+                nama_kegiatan: document.getElementById('nama_kegiatan').value,
+                jenis_kegiatan: document.getElementById('jenis_kegiatan').value,
+                kabupaten: document.getElementById('kabupaten').value,
+                kecamatan: document.getElementById('kecamatan').value,
+                kelurahan: document.getElementById('kelurahan').value,
+                alamat_lengkap: document.getElementById('alamat_lengkap').value,
+                keterangan: document.getElementById('keterangan').value,
+                pengikut: pengikutData,
+                photos: uploadedPhotos
+            };
+            localStorage.setItem('last_reporter_name', payload.nama_pelapor);
+            if(isEditing) {
+                const idx = dataLaporan.findIndex(d => d.id === payload.id);
+                dataLaporan[idx] = payload;
+            } else {
+                dataLaporan.unshift(payload);
+            }
+            localStorage.setItem('db_laporan_personal_v4', JSON.stringify(dataLaporan));
+            resetFormState(); renderTable();
+        };
+
+        window.editItem = (id) => {
+            const d = dataLaporan.find(item => item.id === id);
+            isEditing = true;
+            document.getElementById('editId').value = d.id;
+            inputNamaPelapor.value = d.nama_pelapor;
+            document.getElementById('unit_pelayanan').value = d.unit_pelayanan;
+            document.getElementById('tanggal_kegiatan').value = d.tanggal_kegiatan;
+            document.getElementById('nama_kegiatan').value = d.nama_kegiatan;
+            document.getElementById('jenis_kegiatan').value = d.jenis_kegiatan;
+            document.getElementById('kabupaten').value = d.kabupaten;
+            kabSelect.onchange();
+            document.getElementById('kecamatan').value = d.kecamatan;
+            kecSelect.onchange();
+            document.getElementById('kelurahan').value = d.kelurahan;
+            document.getElementById('alamat_lengkap').value = d.alamat_lengkap;
+            document.getElementById('keterangan').value = d.keterangan;
+            uploadedPhotos = d.photos ? [...d.photos] : [];
+            renderPhotoPreviews();
+            pengikutContainer.innerHTML = '';
+            if(d.pengikut) d.pengikut.forEach(p => addPengikutInput(p));
+            document.getElementById('btnCancel').classList.remove('hidden');
+            document.getElementById('editBadge').classList.remove('hidden');
+            document.getElementById('btnText').innerText = "Update Laporan";
+            window.scrollTo({top:0, behavior:'smooth'});
+        };
+
+        window.deleteItem = (id) => {
+            if(confirm('Hapus laporan ini?')) {
+                dataLaporan = dataLaporan.filter(d => d.id !== id);
+                localStorage.setItem('db_laporan_personal_v4', JSON.stringify(dataLaporan));
+                renderTable();
+            }
+        };
+
+        window.printItem = (id) => {
+            const d = dataLaporan.find(item => item.id === id);
+            if (!d) return;
+
+            const printWindow = window.open('', '_blank');
+            const photosHtml = d.photos && d.photos.length > 0 
+                ? d.photos.map(p => `
+                    <div class="photo-box">
+                        <img src="${p}">
+                    </div>`).join('') 
+                : '<p>Tidak ada dokumentasi foto.</p>';
+
+            const pengikutListHtml = d.pengikut && d.pengikut.length > 0
+                ? `<ol style="margin-top: 5px; padding-left: 20px;">
+                    ${d.pengikut.map(p => `<li>${p}</li>`).join('')}
+                   </ol>`
+                : '<p style="margin-top: 5px;">-</p>';
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Laporan - ${d.nama_kegiatan}</title>
+                    <style>
+                        @page {
+                            size: 210mm 330mm; /* F4 Size */
+                            margin: 15mm 15mm 10mm 15mm;
+                        }
+                        body { 
+                            font-family: 'Times New Roman', serif; 
+                            color: #000; 
+                            line-height: 1.2;
+                            margin: 0;
+                            padding: 0;
+                            font-size: 11pt;
+                        }
+                        .page-container { width: 100%; }
+                        h2 { 
+                            text-align: center; 
+                            text-transform: uppercase; 
+                            border-bottom: 2px solid #000; 
+                            padding-bottom: 5px; 
+                            margin: 0 0 15px 0; 
+                            font-size: 14pt;
+                        }
+                        .info-grid { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            margin-bottom: 10px; 
+                        }
+                        .info-grid th { 
+                            text-align: left; 
+                            width: 150px; 
+                            padding: 3px 0; 
+                            font-weight: bold; 
+                            vertical-align: top;
+                        }
+                        .info-grid td { 
+                            padding: 3px 5px; 
+                            vertical-align: top;
+                        }
+                        .section-title {
+                            font-weight: bold;
+                            text-decoration: underline;
+                            margin-top: 10px;
+                            margin-bottom: 5px;
+                            display: block;
+                            font-size: 11pt;
+                        }
+                        .description-text {
+                            text-align: justify;
+                            margin-bottom: 15px;
+                            min-height: 40px;
+                        }
+                        .photo-container { 
+                            display: grid;
+                            grid-template-columns: repeat(2, 1fr);
+                            gap: 8px;
+                            margin-top: 5px;
+                            width: 100%;
+                        }
+                        .photo-box { 
+                            border: 0.5px solid #ccc; 
+                            padding: 2px;
+                            height: 180px;
+                        }
+                        .photo-box img { 
+                            width: 100%; 
+                            height: 100%; 
+                            object-fit: cover; 
+                        }
+                        .footer-section { 
+                            margin-top: 25px; 
+                            display: flex;
+                            justify-content: flex-end;
+                            page-break-inside: avoid;
+                        }
+                        .sign-container {
+                             display: flex;
+                             flex-direction: column;
+                             align-items: center;
+                             width: 280px;
+                        }
+                        .sign-box { 
+                            text-align: center; 
+                            width: 100%;
+                        }
+                        .sign-space { height: 60px; }
+                        .pengikut-box {
+                            margin-top: 15px;
+                            padding: 10px;
+                            border: 1px solid #eee;
+                            background: #fcfcfc;
+                            width: 100%;
+                            font-size: 10pt;
+                            text-align: left;
+                        }
+                        @media print {
+                            .no-print { display: none !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="page-container">
+                        <h2>LAPORAN KEGIATAN</h2>
+
+                        <table class="info-grid">
+                            <tr><th>Unit Pelayanan</th><td>: ${d.unit_pelayanan}</td></tr>
+                            <tr><th>Tanggal</th><td>: ${d.tanggal_kegiatan}</td></tr>
+                            <tr><th>Nama Kegiatan</th><td style="font-weight: bold;">: ${d.nama_kegiatan}</td></tr>
+                            <tr><th>Lokasi</th><td>: ${d.kelurahan}, ${d.kecamatan}, ${d.kabupaten}</td></tr>
+                            <tr><th>Alamat Lengkap</th><td>: ${d.alamat_lengkap}</td></tr>
+                        </table>
+
+                        <span class="section-title">Hasil / Keterangan Kegiatan:</span>
+                        <div class="description-text">${d.keterangan || 'Kegiatan berjalan lancar sesuai rencana.'}</div>
+
+                        <span class="section-title">Dokumentasi Kegiatan:</span>
+                        <div class="photo-container">${photosHtml}</div>
+
+                        <div class="footer-section">
+                            <div class="sign-container">
+                                <div class="sign-box">
+                                    <p>Sragen, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                                    <p>Pelapor,</p>
+                                    <div class="sign-space"></div>
+                                    <p><strong>( ${d.nama_pelapor} )</strong></p>
+                                </div>
+                                
+                                <div class="pengikut-box">
+                                    <strong> Pengikut Kegiatan:</strong>
+                                    ${pengikutListHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => { 
+                                window.print(); 
+                                window.onafterprint = function() { window.close(); };
+                            }, 500);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        };
+
+        document.getElementById('searchInput').oninput = function() { renderTable(this.value); };
+
+        function exportToExcel() {
+            if (dataLaporan.length === 0) {
+                alert("Tidak ada data untuk diekspor.");
+                return;
+            }
+            const fileName = `Rekap_Laporan_Personal_${new Date().getTime()}.xls`;
+            let xml = `<?xml version="1.0" encoding="utf-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Header">
+   <Font ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#4F81BD" ss:Pattern="Solid"/>
+   <Alignment ss:Vertical="Center" ss:Horizontal="Center" ss:WrapText="1"/>
+   <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders>
+  </Style>
+  <Style ss:ID="Default">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Laporan">
+  <Table ss:ExpandedColumnCount="11" ss:ExpandedRowCount="${dataLaporan.length + 1}" x:FullColumns="1" x:FullRows="1">
+   <Column ss:Width="30"/><Column ss:Width="80"/><Column ss:Width="120"/><Column ss:Width="100"/><Column ss:Width="150"/><Column ss:Width="100"/><Column ss:Width="100"/><Column ss:Width="100"/><Column ss:Width="150"/><Column ss:Width="200"/><Column ss:Width="120"/>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Unit Pelayanan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Jenis Kegiatan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Kegiatan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Kabupaten</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Kecamatan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Kelurahan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Alamat Lengkap</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Hasil/Keterangan</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Pelapor</Data></Cell>
+   </Row>`;
+
+            dataLaporan.forEach((d, i) => {
+                xml += `
+   <Row ss:AutoHeight="1">
+    <Cell ss:StyleID="Default"><Data ss:Type="Number">${i + 1}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${d.tanggal_kegiatan}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.unit_pelayanan)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.jenis_kegiatan)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.nama_kegiatan)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.kabupaten)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.kecamatan)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.kelurahan)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.alamat_lengkap)}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.keterangan || "-")}</Data></Cell>
+    <Cell ss:StyleID="Default"><Data ss:Type="String">${escapeXml(d.nama_pelapor)}</Data></Cell>
+   </Row>`;
+            });
+
+            xml += `</Table></Worksheet></Workbook>`;
+            function escapeXml(unsafe) {
+                return unsafe.replace(/[<>&'"]/g, function (c) {
+                    switch (c) {
+                        case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;'; case '\'': return '&apos;'; case '"': return '&quot;';
+                    }
+                });
+            }
+            const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>

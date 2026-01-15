@@ -1,0 +1,535 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithCustomToken, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Save, 
+  Trash2, 
+  UserCircle2, 
+  Edit3, 
+  Loader2, 
+  Plus, 
+  X, 
+  Search, 
+  Printer,
+  CheckCircle2,
+  AlertCircle,
+  Camera,
+  Upload,
+  User,
+  Award,
+  Briefcase,
+  Calendar,
+  GraduationCap,
+  Building2
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'pegawai-monitoring-jateng';
+
+const PANGKAT_GOLONGAN = [
+  { group: "Lainnya", options: [
+    { label: "-", value: "-" }
+  ]},
+  { group: "Golongan I (Juru)", options: [
+    { label: "Juru Muda (I/a)", value: "Juru Muda - I/a" },
+    { label: "Juru Muda Tingkat I (I/b)", value: "Juru Muda Tingkat I - I/b" },
+    { label: "Juru (I/c)", value: "Juru - I/c" },
+    { label: "Juru Tingkat I (I/d)", value: "Juru Tingkat I - I/d" }
+  ]},
+  { group: "Golongan II (Pengatur)", options: [
+    { label: "Pengatur Muda (II/a)", value: "Pengatur Muda - II/a" },
+    { label: "Pengatur Muda Tingkat I (II/b)", value: "Pengatur Muda Tingkat I - II/b" },
+    { label: "Pengatur (II/c)", value: "Pengatur - II/c" },
+    { label: "Pengatur Tingkat I (II/d)", value: "Pengatur Tingkat I - II/d" }
+  ]},
+  { group: "Golongan III (Penata)", options: [
+    { label: "Penata Muda (III/a)", value: "Penata Muda - III/a" },
+    { label: "Penata Muda Tingkat I (III/b)", value: "Penata Muda Tingkat I - III/b" },
+    { label: "Penata (III/c)", value: "Penata - III/c" },
+    { label: "Penata Tingkat I (III/d)", value: "Penata Tingkat I - III/d" }
+  ]},
+  { group: "Golongan IV (Pembina)", options: [
+    { label: "Pembina (IV/a)", value: "Pembina - IV/a" },
+    { label: "Pembina Tingkat I (IV/b)", value: "Pembina Tingkat I - IV/b" },
+    { label: "Pembina Utama Muda (IV/c)", value: "Pembina Utama Muda - IV/c" },
+    { label: "Pembina Utama Madya (IV/d)", value: "Pembina Utama Madya - IV/d" },
+    { label: "Pembina Utama (IV/e)", value: "Pembina Utama - IV/e" }
+  ]}
+];
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('history');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('Menghubungkan');
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+  const [listPegawai, setListPegawai] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [form, setForm] = useState({
+    nama: '', nip: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '', pangkat: '-', jabatan: '', statusKepegawaian: '', pendidikan: '', jurusan: '', unitKerja: 'PPSDI Raharjo Sragen', photo: ''
+  });
+
+  const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
+
+  const unitKerjaOptions = ["PPSDI Raharjo Sragen", "RPSLU Mojomulyo Sragen", "RPSA Pamardi Siwi Sragen", "RPS PMKS Gondang"];
+  const statusOptions = ["PNS", "PPPK", "PPPK-PW", "Tenaga Kontrak"];
+  const pendidikanOptions = ["SD/Sederajat", "SMP/Sederajat", "SMA/SMK/Sederajat", "D-III", "D-IV / S-1", "S-2", "S-3"];
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth Error:", err); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'pegawai');
+    const unsubscribe = onSnapshot(colRef, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setListPegawai(data.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+        setSyncStatus('Database Aktif');
+      }, 
+      (err) => { setSyncStatus('Terputus'); }
+    );
+    return () => unsubscribe();
+  }, [user]);
+
+  const filteredData = useMemo(() => {
+    return listPegawai.filter(item => 
+      (item.nama?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+      (item.nip?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+    );
+  }, [listPegawai, searchTerm]);
+
+  const showNotif = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  const handleNipChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ''); 
+    if (value.length <= 18) {
+      setForm({ ...form, nip: value });
+    }
+  };
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      showNotif("Kamera tidak dapat diakses", "error");
+      setShowCamera(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    setForm(prev => ({ ...prev, photo: canvas.toDataURL('image/jpeg') }));
+    stopCamera();
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    setShowCamera(false);
+  };
+
+  const printEmployeeProfile = (item) => {
+    const printWindow = window.open('', '_blank');
+    const photoHtml = item.photo 
+      ? `<img src="${item.photo}" style="width: 3cm; height: 4cm; border: 1px solid #000; object-fit: cover;">`
+      : `<div style="width: 3cm; height: 4cm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8pt; text-align: center;">FOTO PEGAWAI<br>3x4</div>`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Biodata - ${item.nama}</title>
+          <style>
+            @page { size: 215mm 330mm; margin: 1.5cm 2cm; }
+            body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.4; margin: 0; padding: 0; color: #000; }
+            .kop { border-bottom: 5px double #000; padding-bottom: 5px; margin-bottom: 20px; text-align: center; }
+            .kop p { margin: 0; padding: 0; font-weight: bold; line-height: 1.1; }
+            .t-prov { font-size: 14pt; } 
+            .t-din { font-size: 16pt; } 
+            .t-pan { font-size: 11pt; } 
+            .t-rah { font-size: 15pt; }
+            .t-adr { font-size: 8pt; font-weight: normal !important; margin-top: 2px !important; line-height: 1.2; }
+            
+            .title { text-align: center; font-weight: bold; font-size: 13pt; text-decoration: underline; margin-bottom: 25px; letter-spacing: 1px; }
+            
+            .photo-container { width: 100%; text-align: center; margin-bottom: 20px; }
+            .photo-box { display: inline-block; }
+            .photo-label { font-size: 8pt; font-style: italic; margin-top: 4px; }
+
+            .sec-title { font-weight: bold; font-size: 10.5pt; text-transform: uppercase; border-bottom: 1px solid #000; margin: 15px 0 8px 0; display: inline-block; padding-right: 15px; }
+            .tbl { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .tbl td { padding: 4px 0; vertical-align: top; }
+            .lbl { width: 35%; } 
+            .col { width: 4%; text-align: center; } 
+            .val { width: 61%; font-weight: bold; }
+            
+            .footer { margin-top: 50px; display: flex; justify-content: flex-end; }
+            .sign-box { text-align: center; width: 280px; }
+            .sign-gap { height: 80px; }
+            .sign-name { font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-bottom: 0px; }
+            .sign-nip { margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          <div class="kop">
+            <p class="t-prov">PEMERINTAH PROVINSI JAWA TENGAH</p>
+            <p class="t-din">DINAS SOSIAL</p>
+            <p class="t-pan">PANTI PELAYANAN SOSIAL DISABILITAS INTELEKTUAL</p>
+            <p class="t-rah">“RAHARJO” SRAGEN</p>
+            <p class="t-adr">Jl. Raya Sragen – Solo Km. 2 Gambiran, Jetak Sidoharjo, Sragen Kode Pos. 57251 Telp. (0271) 891410</p>
+            <p class="t-adr">Website: http://dinsos.jatengprov.go.id - ppsdi.raharjo@gmail.com</p>
+          </div>
+          
+          <div class="title">BIODATA PEGAWAI</div>
+          
+          <div class="photo-container">
+            <div class="photo-box">
+              ${photoHtml}
+              <div class="photo-label">Pas Foto 3x4</div>
+            </div>
+          </div>
+
+          <div class="sec-title">I. Identitas Pribadi</div>
+          <table class="tbl">
+            <tr><td class="lbl">Nama Lengkap</td><td class="col">:</td><td class="val">${item.nama.toUpperCase()}</td></tr>
+            <tr><td class="lbl">NIP / No. Identitas</td><td class="col">:</td><td class="val">${item.nip}</td></tr>
+            <tr><td class="lbl">Tempat, Tanggal Lahir</td><td class="col">:</td><td class="val">${item.tempatLahir}, ${item.tanggalLahir}</td></tr>
+            <tr><td class="lbl">Jenis Kelamin</td><td class="col">:</td><td class="val">${item.jenisKelamin}</td></tr>
+            <tr><td class="lbl">Pendidikan Terakhir</td><td class="col">:</td><td class="val">${item.pendidikan} ${item.jurusan ? '('+item.jurusan+')' : ''}</td></tr>
+          </table>
+
+          <div class="sec-title">II. Kedudukan Kepegawaian</div>
+          <table class="tbl">
+            <tr><td class="lbl">Status Kepegawaian</td><td class="col">:</td><td class="val">${item.statusKepegawaian}</td></tr>
+            <tr><td class="lbl">Pangkat / Golongan</td><td class="col">:</td><td class="val">${item.pangkat || '-'}</td></tr>
+            <tr><td class="lbl">Jabatan</td><td class="col">:</td><td class="val">${item.jabatan}</td></tr>
+            <tr><td class="lbl">Unit Kerja</td><td class="col">:</td><td class="val">${item.unitKerja}</td></tr>
+          </table>
+
+          <div class="footer">
+            <div class="sign-box">
+              <p>Sragen, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
+              <p>Pegawai yang bersangkutan,</p>
+              <div class="sign-gap"></div>
+              <p class="sign-name">${item.nama.toUpperCase()}</p>
+              <p class="sign-nip">NIP. ${item.nip}</p>
+            </div>
+          </div>
+          <script>window.onload = function() { window.print(); setTimeout(() => { window.close(); }, 1000); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+
+    if (form.nip.length !== 18) {
+      showNotif(`NIP harus 18 digit! (Saat ini: ${form.nip.length})`, "error");
+      return;
+    }
+
+    try {
+      const payload = { ...form, updatedAt: Date.now() };
+      if (editId) {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pegawai', editId), payload);
+        setEditId(null);
+        showNotif("Data Berhasil Diperbarui");
+      } else {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'pegawai'), payload);
+        showNotif("Pegawai Berhasil Ditambahkan");
+      }
+      setForm({ nama: '', nip: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '', pangkat: '-', jabatan: '', statusKepegawaian: '', pendidikan: '', jurusan: '', unitKerja: 'PPSDI Raharjo Sragen', photo: '' });
+      setActiveTab('history');
+    } catch (err) { showNotif("Terjadi kesalahan simpan", "error"); }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center bg-white text-slate-400 font-bold uppercase tracking-widest text-xs"><Loader2 className="animate-spin mr-3" size={20} /> Memuat Sistem...</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans pb-28 text-slate-900">
+      {notification.show && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-3.5 rounded-2xl shadow-2xl bg-slate-900 text-white font-bold text-xs uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+           {notification.type === 'error' ? <AlertCircle size={16} className="text-rose-400" /> : <CheckCircle2 size={16} className="text-emerald-400" />}
+           <span>{notification.message}</span>
+        </div>
+      )}
+
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-8 py-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="bg-slate-900 p-2 rounded-xl text-white shadow-lg"><UserCircle2 size={22} /></div>
+          <div>
+            <h1 className="text-sm font-black uppercase tracking-tight text-slate-800">DATA PEGAWAI</h1>
+            <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+               <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span> {syncStatus}
+            </p>
+          </div>
+        </div>
+        <button onClick={() => {setEditId(null); setForm({ nama: '', nip: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '', pangkat: '-', jabatan: '', statusKepegawaian: '', pendidikan: '', jurusan: '', unitKerja: 'PPSDI Raharjo Sragen', photo: '' }); setActiveTab('input');}} className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl flex items-center gap-2">
+          <Plus size={14} /> Data Baru
+        </button>
+      </header>
+
+      <main className="p-6 mx-auto">
+        {activeTab === 'input' ? (
+          <div className="max-w-4xl mx-auto bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
+             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+               <h2 className="text-lg font-black uppercase tracking-tight text-slate-800">{editId ? 'Ubah Data Pegawai' : 'INPUT DATA PEGAWAI'}</h2>
+               <button onClick={() => setActiveTab('history')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Kembali</button>
+             </div>
+             
+             <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="flex flex-col items-center p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 gap-4">
+                   <div className="w-28 h-36 bg-slate-200 rounded-2xl overflow-hidden border-4 border-white shadow-xl flex items-center justify-center relative">
+                      {form.photo ? <img src={form.photo} className="w-full h-full object-cover" /> : <User size={40} className="text-slate-400" />}
+                      {showCamera && <div className="absolute inset-0 z-10"><video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" /></div>}
+                   </div>
+                   <div className="flex gap-2">
+                      {!showCamera ? (
+                        <>
+                          <button type="button" onClick={startCamera} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-900 hover:text-white transition-all"><Camera size={13} /> Kamera</button>
+                          <button type="button" onClick={() => fileInputRef.current.click()} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-900 hover:text-white transition-all"><Upload size={13} /> Berkas</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={capturePhoto} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">Ambil Foto</button>
+                      )}
+                      {form.photo && !showCamera && <button type="button" onClick={() => setForm({...form, photo: ''})} className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><X size={14} /></button>}
+                   </div>
+                   <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => {
+                      const file = e.target.files[0];
+                      if(file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setForm({...form, photo: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                   }} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Nama Lengkap</label>
+                      <input type="text" value={form.nama} onChange={e=>setForm({...form, nama: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:border-slate-900 focus:bg-white transition-all" required />
+                   </div>
+                   <div className="space-y-1">
+                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                       <span>NIP (18 DIGIT)</span>
+                       <span className={form.nip.length === 18 ? "text-emerald-500" : "text-rose-500"}>{form.nip.length}/18</span>
+                     </label>
+                     <input type="text" value={form.nip} onChange={handleNipChange} className={`w-full p-3 bg-slate-50 border ${form.nip.length === 18 ? 'border-emerald-200' : 'border-slate-200'} rounded-xl outline-none font-bold text-sm focus:border-slate-900 focus:bg-white transition-all`} placeholder="Masukkan 18 digit angka" required />
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Tempat Lahir</label>
+                      <input type="text" value={form.tempatLahir} onChange={e=>setForm({...form, tempatLahir: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:border-slate-900 focus:bg-white transition-all" />
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Lahir</label>
+                      <input type="date" value={form.tanggalLahir} onChange={e=>setForm({...form, tanggalLahir: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:border-slate-900 focus:bg-white transition-all" />
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Jenis Kelamin</label>
+                      <select value={form.jenisKelamin} onChange={e=>setForm({...form, jenisKelamin: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm"><option value="">Pilih...</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Status Pegawai</label>
+                      <select value={form.statusKepegawaian} onChange={e=>setForm({...form, statusKepegawaian: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm"><option value="">Pilih...</option>{statusOptions.map(s=><option key={s} value={s}>{s}</option>)}</select>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Golongan</label>
+                      <select value={form.pangkat} onChange={e=>setForm({...form, pangkat: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm">
+                        {PANGKAT_GOLONGAN.map(g => (
+                          <optgroup key={g.group} label={g.group}>
+                            {g.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Jabatan</label>
+                      <input type="text" value={form.jabatan} onChange={e=>setForm({...form, jabatan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm" />
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Pendidikan</label>
+                      <select value={form.pendidikan} onChange={e=>setForm({...form, pendidikan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm"><option value="">Pilih...</option>{pendidikanOptions.map(p=><option key={p} value={p}>{p}</option>)}</select>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Jurusan</label>
+                      <input type="text" value={form.jurusan} onChange={e=>setForm({...form, jurusan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm" />
+                   </div>
+                   <div className="md:col-span-2 space-y-1">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Unit Kerja</label>
+                      <select value={form.unitKerja} onChange={e=>setForm({...form, unitKerja: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm">{unitKerjaOptions.map(u=><option key={u} value={u}>{u}</option>)}</select>
+                   </div>
+                </div>
+
+                <button type="submit" className="w-full p-4 bg-slate-900 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl flex items-center justify-center gap-4 mt-4">
+                  <Save size={16} /> {editId ? 'Simpan Perubahan' : 'Daftarkan Pegawai'}
+                </button>
+             </form>
+          </div>
+        ) : (
+          /* Kontainer Utama Tabel Diatur menjadi max-w-[80%] untuk layar lebar */
+          <div className="space-y-6 animate-in fade-in duration-500 flex flex-col items-center">
+            
+            {/* Header & Filter Area (Tetap selaras dengan lebar tabel) */}
+            <div className="w-full md:max-w-[80%] flex flex-col md:flex-row gap-4">
+                <div className="flex-grow bg-white p-4 rounded-[1.5rem] border border-slate-200 shadow-sm">
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                      <input type="text" placeholder="Cari nama atau NIP..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold focus:bg-white focus:border-slate-400 transition-all shadow-inner" />
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-[1.5rem] border border-slate-200 shadow-sm flex items-center gap-6 px-8">
+                   <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">TOTAL DATA</p>
+                      <p className="text-xl font-black text-slate-800 tracking-tight">{listPegawai.length}</p>
+                   </div>
+                   <div className="w-px h-8 bg-slate-100"></div>
+                   <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">PNS/PPPK</p>
+                      <p className="text-xl font-black text-blue-600 tracking-tight">{listPegawai.filter(p => p.statusKepegawaian?.startsWith('P')).length}</p>
+                   </div>
+                </div>
+            </div>
+
+            {/* Area Tabel dengan Batas Lebar 80% */}
+            <div className="w-full md:max-w-[80%] bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full text-left min-w-[1200px]">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-100">
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest w-[250px]">Profil Pegawai</th>
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Identitas & TTL</th>
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Status & Gol</th>
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Jabatan & Unit</th>
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Pendidikan</th>
+                    <th className="p-5 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {filteredData.map(item => (
+                    <tr key={item.id} className="hover:bg-blue-50/30 transition-all group">
+                      <td className="p-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-16 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200 overflow-hidden shadow-md shrink-0">
+                            {item.photo ? <img src={item.photo} className="w-full h-full object-cover" /> : <User size={20}/>}
+                          </div>
+                          <div>
+                            <p className="text-[12px] font-black text-slate-800 uppercase mb-0.5">{item.nama}</p>
+                            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[8px] font-black uppercase tracking-tighter">{item.jenisKelamin}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-600 flex items-center gap-2">
+                             <Award size={12} className="text-slate-400" /> {item.nip}
+                          </p>
+                          <p className="text-[10px] font-medium text-slate-500 flex items-center gap-2">
+                             <Calendar size={12} className="text-slate-400" /> {item.tempatLahir}, {item.tanggalLahir || '-'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="space-y-1">
+                          <div className="flex gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[8px] font-black uppercase tracking-tighter">{item.statusKepegawaian}</span>
+                          </div>
+                          <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">
+                             {item.pangkat || '-'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700 flex items-center gap-2 uppercase tracking-tight">
+                             <Briefcase size={12} className="text-blue-500" /> {item.jabatan}
+                          </p>
+                          <p className="text-[9px] font-medium text-slate-500 flex items-center gap-2">
+                             <Building2 size={11} className="text-slate-400" /> {item.unitKerja}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700 flex items-center gap-2">
+                             <GraduationCap size={13} className="text-emerald-500" /> {item.pendidikan}
+                          </p>
+                          <p className="text-[9px] font-medium text-slate-400 italic">
+                             {item.jurusan || '-'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <div className="flex items-center justify-center gap-2">
+                           <button onClick={() => printEmployeeProfile(item)} className="w-8 h-8 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center" title="Cetak"><Printer size={14} /></button>
+                           <button onClick={() => {setForm(item); setEditId(item.id); setActiveTab('input');}} className="w-8 h-8 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center" title="Edit"><Edit3 size={14} /></button>
+                           <button onClick={async () => { if(confirm(`Hapus data ${item.nama}?`)) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pegawai', item.id)); }} className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center" title="Hapus"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200 px-8 py-4 flex items-center justify-between z-50">
+        <div className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
+           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+           DATA PEGAWAI PPSDI
+        </div>
+        <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+           <button onClick={() => setActiveTab('history')} className={`px-6 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>Database</button>
+           <button onClick={() => setActiveTab('input')} className={`px-6 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'input' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>Registrasi</button>
+        </div>
+      </nav>
+    </div>
+  );
+}

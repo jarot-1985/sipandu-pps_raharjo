@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IKM - Indeks Kepuasan Masyarakat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .print-only { display: block !important; }
+            body { background: white; }
+        }
+        .print-only { display: none; }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        table { table-layout: fixed; width: 100%; border-spacing: 0; }
+        th, td { word-wrap: break-word; overflow: hidden; text-overflow: ellipsis; }
+        
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #059669;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-900 text-xs">
+
+    <div class="max-w-[1600px] mx-auto py-4 px-4 no-print">
+        <!-- Header -->
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-3 gap-2">
+            <div>
+                <h1 class="text-xl font-bold text-emerald-800 tracking-tight">Indeks Kepuasan Masyarakat (IKM)</h1>
+                <p class="text-slate-500 text-[10px]">Monitoring Mutu Pelayanan Panti dan Rumah Pelayanan Sosial</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="window.location.reload()" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 text-white rounded-md hover:bg-emerald-800 transition shadow-sm font-bold text-[10px]">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh Sistem
+                </button>
+                
+                <div id="authStatus" class="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                    Menghubungkan...
+                </div>
+                <div id="currentTime" class="text-[10px] font-medium bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-slate-600"></div>
+            </div>
+        </header>
+
+        <div class="flex flex-col gap-8">
+            <!-- Section Input (80% Lebar Layar, Terpusat) -->
+            <div class="w-full flex justify-center">
+                <div class="w-full md:w-[80%] lg:w-[80%]">
+                    <form id="skmForm" class="bg-white shadow-xl rounded-2xl overflow-hidden border border-slate-200">
+                        <div class="p-4 bg-emerald-800 text-white flex justify-between items-center">
+                            <h2 class="text-sm font-semibold" id="formTitle">Formulir Input Data IKM</h2>
+                            <span id="cloudIcon" class="text-emerald-400">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H5.5z" /></svg>
+                            </span>
+                        </div>
+                        
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <input type="hidden" id="editDocId" value="">
+                            
+                            <!-- Kolom 1: Identitas -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Unit Kerja Pelayanan</label>
+                                    <select id="unitKerja" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition text-xs">
+                                        <option value="">Pilih Unit...</option>
+                                        <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
+                                        <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
+                                        <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
+                                        <option value="RPS PMKS Gondang Sragen">RPS PMKS Gondang Sragen</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Tahun</label>
+                                        <select id="tahunData" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Periode</label>
+                                        <select id="periode" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                                            <option value="">Pilih...</option>
+                                            <optgroup label="Triwulan">
+                                                <option value="Triwulan I">Triwulan I</option>
+                                                <option value="Triwulan II">Triwulan II</option>
+                                                <option value="Triwulan III">Triwulan III</option>
+                                                <option value="Triwulan IV">Triwulan IV</option>
+                                            </optgroup>
+                                            <optgroup label="Semester">
+                                                <option value="Semester I">Semester I</option>
+                                                <option value="Semester II">Semester II</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kolom 2: Angka & Hasil -->
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Responden</label>
+                                        <input type="number" id="jumlahResponden" placeholder="0" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Skor (1-4)</label>
+                                        <input type="number" id="skorIkm" step="0.01" min="1" max="4" placeholder="3.50" required oninput="calculateDetails()" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold ring-1 ring-emerald-100">
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-xl border border-dashed border-slate-300 grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Konversi</label>
+                                        <input type="number" id="manualKonversi" readonly class="w-full p-2 bg-slate-200 border-none rounded text-xs font-black text-emerald-700">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Mutu</label>
+                                        <input type="text" id="manualMutu" readonly class="w-full p-2 bg-slate-200 border-none rounded text-xs font-black text-center">
+                                    </div>
+                                    <div class="col-span-2">
+                                        <input type="text" id="manualKinerja" readonly class="w-full p-1.5 bg-emerald-50 border-none rounded text-[9px] font-bold text-emerald-800 text-center uppercase tracking-widest">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kolom 3: Berkas & Action -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Unggah Bukti Laporan (PDF)</label>
+                                    <input type="file" id="fileUtama" accept="application/pdf" class="hidden" onchange="processFile(this)">
+                                    <button type="button" onclick="document.getElementById('fileUtama').click()" class="w-full flex items-center justify-between px-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 hover:bg-white transition text-left group">
+                                        <span id="fileLabel" class="text-[10px] text-slate-400 truncate italic">Pilih file PDF...</span>
+                                        <svg class="h-4 w-4 text-slate-400 group-hover:text-emerald-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                    </button>
+                                    <input type="hidden" id="storedFileBase64">
+                                    <input type="hidden" id="storedFileName">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Keterangan Tambahan</label>
+                                    <textarea id="keterangan" rows="1" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs resize-none" placeholder="Opsional..."></textarea>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="resetForm()" id="btnCancel" class="hidden flex-1 py-2.5 border border-slate-300 text-slate-500 rounded-lg font-bold hover:bg-slate-100 transition text-[10px]">Batal</button>
+                                    <button type="button" id="btnSubmit" onclick="saveToCloud()" class="flex-[2] py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-md font-bold transition text-xs disabled:opacity-50">
+                                        <span id="btnText">Simpan Data Cloud</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Section Tabel (100% Lebar Layar) -->
+            <div class="w-full">
+                <div class="bg-white shadow-lg rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-emerald-100 rounded-lg">
+                                <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                            </div>
+                            <h2 class="font-bold text-slate-800 uppercase tracking-tight text-xs">Arsip Data Indeks Kepuasan Masyarakat</h2>
+                            <div id="syncIndicator" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse hidden"></div>
+                        </div>
+                        <span id="dataCount" class="bg-slate-800 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">0 DATA TERSIMPAN</span>
+                    </div>
+                    
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100/80 text-slate-500 text-[9px] uppercase font-black border-b border-slate-200">
+                                    <th class="px-6 py-4 w-[250px]">Unit Pelayanan</th>
+                                    <th class="px-4 py-4 w-[120px] text-center">Periode</th>
+                                    <th class="px-4 py-4 w-[80px] text-center">Responden</th>
+                                    <th class="px-4 py-4 w-[80px] text-center">Skor</th>
+                                    <th class="px-4 py-4 w-[100px] text-center">Konversi</th>
+                                    <th class="px-4 py-4 w-[60px] text-center">Mutu</th>
+                                    <th class="px-4 py-4 w-[180px] text-center">Lampiran</th>
+                                    <th class="px-4 py-4 w-[100px] text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTable" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div id="emptyState" class="p-16 text-center text-slate-400">
+                            <p class="text-[11px] font-medium" id="loadingStatus">Sinkronisasi Database Cloud...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-10 opacity-0 transition-all duration-300 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl z-50 text-xs font-bold flex items-center gap-3">
+        <div id="toastIcon"></div>
+        <span id="toastMsg"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ikm-manager-cloud';
+
+        let currentUser = null;
+        let database = [];
+
+        // Auth Init
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('loadingStatus').innerText = "Gagal Terhubung ke Cloud";
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('authStatus');
+            if (user) {
+                statusEl.innerText = "Cloud Online";
+                statusEl.className = "text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100";
+                startDataListener();
+            } else {
+                statusEl.innerText = "Cloud Offline";
+                statusEl.className = "text-[9px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100";
+            }
+        });
+
+        const startDataListener = () => {
+            if (!currentUser) return;
+            const dataColl = collection(db, 'artifacts', appId, 'public', 'data', 'ikm_records');
+            
+            onSnapshot(dataColl, (snapshot) => {
+                database = [];
+                snapshot.forEach(doc => { database.push({ id: doc.id, ...doc.data() }); });
+                database.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                renderTable();
+                
+                const syncInd = document.getElementById('syncIndicator');
+                syncInd.classList.remove('hidden');
+                setTimeout(() => syncInd.classList.add('hidden'), 1000);
+            }, (err) => { 
+                console.error(err);
+                document.getElementById('loadingStatus').innerText = "Koneksi data terganggu"; 
+            });
+        };
+
+        window.processFile = (input) => {
+            const file = input.files[0];
+            const label = document.getElementById('fileLabel');
+            if (!file) return;
+            if (file.size > 1024 * 1024) { 
+                showToast("File melebihi 1MB!", "bg-red-600");
+                input.value = "";
+                return;
+            }
+            label.innerText = "Mengunggah...";
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('storedFileBase64').value = e.target.result;
+                document.getElementById('storedFileName').value = file.name;
+                label.innerText = file.name;
+                label.classList.add('text-emerald-700', 'font-bold', 'not-italic');
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.downloadFile = (base64, name) => {
+            if (!base64) return;
+            const link = document.createElement('a');
+            link.href = base64;
+            link.download = name || "bukti-ikm.pdf";
+            link.click();
+            showToast("Membuka berkas...");
+        };
+
+        window.calculateDetails = () => {
+            const skorRaw = parseFloat(document.getElementById('skorIkm').value);
+            if (skorRaw && skorRaw >= 1 && skorRaw <= 4) {
+                const konversi = skorRaw * 25;
+                let mutu = "D", kinerja = "Tidak Baik";
+                if (konversi >= 88.31) { mutu = "A"; kinerja = "Sangat Baik"; }
+                else if (konversi >= 76.61) { mutu = "B"; kinerja = "Baik"; }
+                else if (konversi >= 65.00) { mutu = "C"; kinerja = "Kurang Baik"; }
+
+                document.getElementById('manualKonversi').value = konversi.toFixed(2);
+                document.getElementById('manualMutu').value = mutu;
+                document.getElementById('manualKinerja').value = kinerja;
+            }
+        };
+
+        window.saveToCloud = async () => {
+            if (!currentUser) return showToast("Menunggu Cloud...", "bg-orange-600");
+            
+            const unit = document.getElementById('unitKerja').value;
+            const tahun = document.getElementById('tahunData').value;
+            const periode = document.getElementById('periode').value;
+            const responden = parseInt(document.getElementById('jumlahResponden').value);
+            const skorRaw = parseFloat(document.getElementById('skorIkm').value);
+            const editId = document.getElementById('editDocId').value;
+
+            if (!unit || !tahun || !periode || isNaN(skorRaw)) return showToast("Lengkapi semua field!", "bg-red-600");
+
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            const originalText = document.getElementById('btnText').innerText;
+            document.getElementById('btnText').innerHTML = '<div class="loader"></div>';
+
+            try {
+                const payload = {
+                    unit, tahun, periode, responden, skorRaw,
+                    konversi: parseFloat(document.getElementById('manualKonversi').value),
+                    mutu: document.getElementById('manualMutu').value,
+                    kinerja: document.getElementById('manualKinerja').value,
+                    pdf: document.getElementById('storedFileBase64').value,
+                    pdfName: document.getElementById('storedFileName').value,
+                    ket: document.getElementById('keterangan').value,
+                    updatedAt: new Date().toISOString(),
+                    createdAt: editId ? database.find(d => d.id === editId).createdAt : new Date().toISOString()
+                };
+
+                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'ikm_records');
+                if (editId) {
+                    await setDoc(doc(collRef, editId), payload);
+                    showToast("Perubahan data disimpan");
+                } else {
+                    await addDoc(collRef, payload);
+                    showToast("Data baru berhasil diunggah");
+                }
+                resetForm();
+            } catch (err) { 
+                showToast("Gagal mengunggah data", "bg-red-600");
+            } finally {
+                btn.disabled = false;
+                document.getElementById('btnText').innerText = originalText;
+            }
+        };
+
+        window.editData = (id) => {
+            const item = database.find(d => d.id === id);
+            if (!item) return;
+            document.getElementById('editDocId').value = id;
+            document.getElementById('unitKerja').value = item.unit;
+            document.getElementById('tahunData').value = item.tahun;
+            document.getElementById('periode').value = item.periode;
+            document.getElementById('jumlahResponden').value = item.responden;
+            document.getElementById('skorIkm').value = item.skorRaw;
+            window.calculateDetails();
+            document.getElementById('storedFileBase64').value = item.pdf || "";
+            document.getElementById('storedFileName').value = item.pdfName || "";
+            document.getElementById('fileLabel').innerText = item.pdfName || "Ganti berkas...";
+            document.getElementById('keterangan').value = item.ket || "";
+            document.getElementById('formTitle').innerText = "Edit Data Rekaman IKM";
+            document.getElementById('btnCancel').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.deleteData = async (id) => {
+            if (confirm("Data akan dihapus permanen dari Cloud. Lanjutkan?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ikm_records', id));
+                    showToast("Data dihapus", "bg-slate-700");
+                } catch (e) { showToast("Gagal menghapus", "bg-red-600"); }
+            }
+        };
+
+        window.resetForm = () => {
+            document.getElementById('skmForm').reset();
+            document.getElementById('editDocId').value = "";
+            document.getElementById('fileLabel').innerText = "Pilih file PDF...";
+            document.getElementById('fileLabel').classList.remove('text-emerald-700', 'font-bold', 'not-italic');
+            ['storedFileBase64', 'storedFileName', 'manualKonversi', 'manualMutu', 'manualKinerja'].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            document.getElementById('formTitle').innerText = "Formulir Input Data IKM";
+            document.getElementById('btnCancel').classList.add('hidden');
+        };
+
+        const renderTable = () => {
+            const tbody = document.getElementById('dataTable');
+            tbody.innerHTML = '';
+            document.getElementById('dataCount').innerText = `${database.length} DATA TERSIMPAN`;
+            
+            if (database.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+                document.getElementById('loadingStatus').innerText = "Database Kosong";
+                return;
+            }
+            document.getElementById('emptyState').classList.add('hidden');
+
+            database.forEach((item) => {
+                let mutuColor = "bg-red-500";
+                if (item.mutu === "A") mutuColor = "bg-emerald-500";
+                else if (item.mutu === "B") mutuColor = "bg-blue-500";
+                else if (item.mutu === "C") mutuColor = "bg-amber-500";
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-slate-800">${item.unit}</td>
+                    <td class="px-4 py-4 text-center"><span class="bg-slate-100 px-2 py-0.5 rounded text-[8px] font-bold text-slate-500">${item.periode} ${item.tahun}</span></td>
+                    <td class="px-4 py-4 text-center font-medium">${item.responden || 0}</td>
+                    <td class="px-4 py-4 text-center text-slate-400 font-bold">${Number(item.skorRaw).toFixed(2)}</td>
+                    <td class="px-4 py-4 text-center font-black text-slate-800">${Number(item.konversi).toFixed(2)}</td>
+                    <td class="px-4 py-4 text-center"><span class="w-6 h-6 flex items-center justify-center rounded-lg mx-auto font-black text-white text-[10px] shadow-sm ${mutuColor}">${item.mutu}</span></td>
+                    <td class="px-4 py-4">
+                        ${item.pdf ? `
+                            <button onclick="downloadFile('${item.pdf}', '${item.pdfName}')" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-[8px] font-bold hover:border-emerald-500 hover:text-emerald-700 transition w-full">
+                                <svg class="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                <span class="truncate">${item.pdfName}</span>
+                            </button>
+                        ` : '<span class="text-slate-300 italic text-[8px] block text-center italic">Kosong</span>'}
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="editData('${item.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
+                            <button onclick="deleteData('${item.id}')" class="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const updateTime = () => {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        };
+
+        const populateYears = () => {
+            const yearSelect = document.getElementById('tahunData');
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear; i >= currentYear - 3; i--) {
+                const option = document.createElement('option');
+                option.value = i; option.text = i;
+                yearSelect.appendChild(option);
+            }
+        };
+
+        function showToast(msg, color = "bg-slate-900") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.className = `fixed bottom-6 right-6 transform opacity-100 translate-y-0 transition-all duration-300 ${color} text-white px-6 py-3 rounded-xl shadow-2xl z-50 text-xs font-bold flex items-center gap-3 border border-white/10`;
+            setTimeout(() => toast.classList.add('translate-y-10', 'opacity-0'), 3500);
+        }
+
+        updateTime();
+        populateYears();
+        initAuth();
+    </script>
+</body>
+</html>

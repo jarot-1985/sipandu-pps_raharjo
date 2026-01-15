@@ -1,0 +1,616 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithCustomToken, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Save, 
+  Trash2, 
+  Shirt, 
+  Edit3, 
+  Loader2, 
+  Plus, 
+  Camera, 
+  X, 
+  Image as ImageIcon, 
+  Search, 
+  Filter, 
+  Download, 
+  LayoutGrid, 
+  Printer,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+  Building2,
+  CalendarRange
+} from 'lucide-react';
+
+// --- Konfigurasi Firebase ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'pakaian-monitoring-cloud';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('input');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('Menghubungkan');
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+
+  const [listPakaian, setListPakaian] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterUnit, setFilterUnit] = useState('Semua');
+  
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const [form, setForm] = useState({
+    unitKerja: '',
+    jenisPakaian: '',
+    tanggalBelanja: '',
+    uraian: '',
+    penyedia: '',
+    volume: '',
+    hargaSatuan: '',
+    nominal: 0,
+    photos: [] 
+  });
+
+  const unitKerjaOptions = ["PPSDI Raharjo Sragen", "RPSLU Mojomulyo Sragen", "RPSA Pamardi Siwi Sragen", "RPS PMKS Gondang"];
+  const jenisPakaianOptions = ["Pakaian/Seragam Panti", "Pakaian/Seragam Sekolah", "Pakaian Kerja", "Pakaian Olahraga"];
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth Error:", err); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setSyncStatus('Sinkronisasi...');
+    // Path Koleksi: /artifacts/{appId}/public/data/{collectionName}
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'pakaian');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setListPakaian(data.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+      setSyncStatus('Cloud Aktif');
+    }, (err) => {
+      setSyncStatus('Terputus');
+      console.error("Snapshot error:", err);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    const vol = parseFloat(form.volume) || 0;
+    const price = parseFloat(form.hargaSatuan) || 0;
+    setForm(prev => ({ ...prev, nominal: vol * price }));
+  }, [form.volume, form.hargaSatuan]);
+
+  const filteredData = useMemo(() => {
+    return listPakaian.filter(item => {
+      const matchSearch = (item.uraian?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+                          (item.penyedia?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+      const matchUnit = filterUnit === 'Semua' || item.unitKerja === filterUnit;
+      
+      let matchDate = true;
+      if (startDate && endDate) {
+        matchDate = item.tanggalBelanja >= startDate && item.tanggalBelanja <= endDate;
+      } else if (startDate) {
+        matchDate = item.tanggalBelanja >= startDate;
+      } else if (endDate) {
+        matchDate = item.tanggalBelanja <= endDate;
+      }
+
+      return matchSearch && matchUnit && matchDate;
+    });
+  }, [listPakaian, searchTerm, filterUnit, startDate, endDate]);
+
+  const stats = useMemo(() => {
+    const total = filteredData.reduce((acc, curr) => acc + (curr.nominal || 0), 0);
+    return { total, count: filteredData.length };
+  }, [filteredData]);
+
+  const showNotif = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 4000);
+  };
+
+  const formatNumber = (val) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val || 0);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterUnit('Semua');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const exportToExcel = () => {
+    if (filteredData.length === 0) {
+      showNotif("Tidak ada data untuk diexport", "error");
+      return;
+    }
+
+    let xmlData = `<?xml version="1.0"?>
+    <?mso-application progid="Excel.Sheet"?>
+    <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+     xmlns:o="urn:schemas-microsoft-com:office:office"
+     xmlns:x="urn:schemas-microsoft-com:office:excel"
+     xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+     xmlns:html="http://www.w3.org/TR/REC-html40">
+     <Worksheet ss:Name="Laporan Monitoring">
+      <Table>
+       <Row>
+        <Cell><Data ss:Type="String">No</Data></Cell>
+        <Cell><Data ss:Type="String">Tanggal</Data></Cell>
+        <Cell><Data ss:Type="String">Unit Kerja</Data></Cell>
+        <Cell><Data ss:Type="String">Jenis Pakaian</Data></Cell>
+        <Cell><Data ss:Type="String">Uraian</Data></Cell>
+        <Cell><Data ss:Type="String">Penyedia</Data></Cell>
+        <Cell><Data ss:Type="String">Volume</Data></Cell>
+        <Cell><Data ss:Type="String">Harga Satuan</Data></Cell>
+        <Cell><Data ss:Type="String">Total Nominal</Data></Cell>
+       </Row>`;
+
+    filteredData.forEach((item, index) => {
+      xmlData += `
+       <Row>
+        <Cell><Data ss:Type="Number">${index + 1}</Data></Cell>
+        <Cell><Data ss:Type="String">${item.tanggalBelanja}</Data></Cell>
+        <Cell><Data ss:Type="String">${item.unitKerja}</Data></Cell>
+        <Cell><Data ss:Type="String">${item.jenisPakaian}</Data></Cell>
+        <Cell><Data ss:Type="String">${item.uraian}</Data></Cell>
+        <Cell><Data ss:Type="String">${item.penyedia || '-'}</Data></Cell>
+        <Cell><Data ss:Type="Number">${item.volume}</Data></Cell>
+        <Cell><Data ss:Type="Number">${item.hargaSatuan}</Data></Cell>
+        <Cell><Data ss:Type="Number">${item.nominal}</Data></Cell>
+       </Row>`;
+    });
+
+    xmlData += `</Table></Worksheet></Workbook>`;
+    
+    const blob = new Blob([xmlData], { type: 'application/vnd.ms-excel' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Laporan_Monitoring_Pakaian_${new Date().toISOString().split('T')[0]}.xls`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    showNotif("File Excel berhasil diunduh");
+  };
+
+  const printF4Documentation = (item) => {
+    const printWindow = window.open('', '_blank');
+    const photosHtml = item.photos?.length > 0 
+      ? `<div class="photo-grid">${item.photos.map(p => `
+          <div class="photo-item">
+            <img src="${p}" />
+          </div>`).join('')}</div>`
+      : `<div class="no-photo">Tidak ada dokumentasi foto</div>`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cetak F4 - ${item.uraian.substring(0, 15)}</title>
+          <style>
+            @page { size: 210mm 330mm; margin: 10mm 15mm; }
+            body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.3; color: #000; margin: 0; padding: 0; }
+            .container { max-height: 310mm; display: flex; flex-direction: column; }
+            .header { text-align: center; border-bottom: 2.5px double #000; margin-bottom: 12px; padding-bottom: 5px; }
+            .header h1 { margin: 0; font-size: 14pt; text-transform: uppercase; font-weight: bold; }
+            .header p { margin: 2px 0 0; font-size: 10pt; font-weight: bold; }
+            .section-title { font-weight: bold; text-transform: uppercase; margin: 8px 0 4px; font-size: 10pt; background: #f0f0f0; padding: 2px 8px; border: 1px solid #000; }
+            .data-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+            .data-table td { padding: 6px 10px; vertical-align: top; border: 1px solid #000; font-size: 11pt; }
+            .data-table td.label { width: 30%; font-weight: bold; }
+            .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; flex-grow: 1; }
+            .photo-item { border: 1px solid #000; padding: 4px; display: flex; align-items: center; justify-content: center; height: 240px; background: #fafafa; }
+            .photo-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+            .no-photo { text-align: center; padding: 30px; border: 1px dashed #000; font-style: italic; font-size: 10pt; margin-top: 10px; }
+            .footer { margin-top: 15px; display: flex; justify-content: flex-end; }
+            .sign-box { text-align: center; width: 250px; }
+            .sign-space { height: 60px; }
+            .font-bold { font-weight: bold; }
+            .uppercase { text-transform: uppercase; }
+            .underline { text-decoration: underline; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>LAPORAN DOKUMENTASI PENGADAAN</h1><p>DINAS SOSIAL KABUPATEN SRAGEN</p></div>
+            <div class="section-title">I. INFORMASI ADMINISTRASI</div>
+            <table class="data-table">
+              <tr><td class="label">Unit Kerja</td><td>${item.unitKerja}</td></tr>
+              <tr><td class="label">Jenis Barang</td><td>${item.jenisPakaian}</td></tr>
+              <tr><td class="label">Penyedia / Toko</td><td>${item.penyedia || '-'}</td></tr>
+              <tr><td class="label">Tanggal Belanja</td><td>${item.tanggalBelanja}</td></tr>
+            </table>
+            <div class="section-title">II. RINCIAN PEKERJAAN & BIAYA</div>
+            <table class="data-table">
+              <tr><td class="label">Uraian Pekerjaan</td><td class="uppercase">${item.uraian}</td></tr>
+              <tr><td class="label">Volume</td><td>${item.volume} Unit/Pcs</td></tr>
+              <tr><td class="label">Harga Satuan</td><td>Rp ${formatNumber(item.hargaSatuan)}</td></tr>
+              <tr><td class="label">Total Anggaran</td><td class="font-bold">Rp ${formatNumber(item.nominal)}</td></tr>
+            </table>
+            <div class="section-title">III. DOKUMENTASI VISUAL</div>
+            ${photosHtml}
+            <div class="footer"><div class="sign-box"><p>Sragen, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p><p>Petugas Inventaris,</p><div class="sign-space"></div><p class="font-bold underline uppercase">( ___________________________ )</p></div></div>
+          </div>
+          <script>window.onload = function() { setTimeout(() => { window.print(); window.close(); }, 600); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (form.photos.length + files.length > 4) {
+      showNotif("Maksimal 4 foto diperbolehkan", "error");
+      return;
+    }
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm(prev => ({ ...prev, photos: [...prev.photos, reader.result] }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const payload = { ...form, updatedAt: Date.now() };
+    try {
+      if (editId) {
+        // Path Dokumen: /artifacts/{appId}/public/data/{collectionName}/{documentId}
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pakaian', editId);
+        await updateDoc(docRef, payload);
+        setEditId(null);
+        showNotif("Data Cloud Diperbarui");
+      } else {
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'pakaian');
+        await addDoc(colRef, payload);
+        showNotif("Data Tersimpan");
+      }
+      setForm({ unitKerja: '', jenisPakaian: '', tanggalBelanja: '', uraian: '', penyedia: '', volume: '', hargaSatuan: '', nominal: 0, photos: [] });
+      setActiveTab('history');
+    } catch (err) {
+      console.error("Submit error:", err);
+      showNotif("Gagal Sinkronisasi", "error");
+    }
+  };
+
+  // PERBAIKAN FUNGSI HAPUS
+  const handleDelete = async (id) => {
+    if (!user) {
+        showNotif("Sesi berakhir, silakan muat ulang", "error");
+        return;
+    }
+
+    const isConfirmed = window.confirm("PERHATIAN: Data akan dihapus secara permanen dari Cloud. Lanjutkan?");
+    
+    if (isConfirmed) {
+      try {
+        // Harus menggunakan path absolut sesuai Rule 1: /artifacts/{appId}/public/data/{collectionName}/{documentId}
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pakaian', id);
+        await deleteDoc(docRef);
+        showNotif("Data Berhasil Dihapus");
+      } catch (err) {
+        console.error("Delete Error:", err);
+        showNotif("Gagal Menghapus Data", "error");
+      }
+    }
+  };
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-white">
+      <Loader2 className="animate-spin text-indigo-600" size={32} />
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-24 text-slate-900 antialiased">
+      {notification.show && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl font-bold text-xs uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${notification.type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'}`}>
+           {notification.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} className="text-emerald-400" />}
+           <span>{notification.message}</span>
+        </div>
+      )}
+
+      <header className="bg-white/80 border-b border-slate-200 sticky top-0 z-40 shadow-sm backdrop-blur-md">
+        <div className="max-w-full px-4 mx-auto py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg rotate-3 group cursor-pointer" onClick={() => setActiveTab('history')}>
+               <Shirt className="text-white w-6 h-6 group-hover:scale-110 transition-transform" />
+            </div>
+            <div>
+              <h1 className="text-sm font-black uppercase tracking-tight text-slate-800">BELANJA PAKAIAN</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {syncStatus}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+             <div className="hidden md:block text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Belanja</p>
+                <p className="text-lg font-black text-indigo-600 leading-none">Rp {formatNumber(stats.total)}</p>
+             </div>
+             <button onClick={() => {setEditId(null); setActiveTab('input')}} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-md active:scale-95">
+                <Plus size={16} /> Baru
+             </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 md:p-6 max-w-[1400px] mx-auto">
+        {activeTab === 'input' ? (
+          <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-500">
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-xl">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                  {editId ? 'Edit Data Pengadaan' : 'Input Pengadaan Baru'}
+                </h2>
+                <button onClick={() => setActiveTab('history')} className="text-xs font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors">Batal</button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Unit Kerja</label>
+                    <select value={form.unitKerja} onChange={e=>setForm({...form, unitKerja: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" required>
+                      <option value="">Pilih Unit...</option>
+                      {unitKerjaOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Jenis Pakaian</label>
+                    <select value={form.jenisPakaian} onChange={e=>setForm({...form, jenisPakaian: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" required>
+                      <option value="">Pilih Jenis...</option>
+                      {jenisPakaianOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Tanggal Belanja</label>
+                    <input type="date" value={form.tanggalBelanja} onChange={e=>setForm({...form, tanggalBelanja: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:border-indigo-500 transition-all" required />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Penyedia / Toko</label>
+                    <input type="text" value={form.penyedia} onChange={e=>setForm({...form, penyedia: e.target.value})} placeholder="Nama Toko..." className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:border-indigo-500 transition-all" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Uraian Pekerjaan / Spesifikasi</label>
+                  <textarea value={form.uraian} onChange={e=>setForm({...form, uraian: e.target.value})} placeholder="Contoh: Pengadaan Seragam Batik Motif Sragenan..." className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm h-24 resize-none focus:border-indigo-500 transition-all" required />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-5 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Volume</label>
+                    <input type="number" value={form.volume} onChange={e=>setForm({...form, volume: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-black text-sm text-center focus:border-indigo-500 transition-all" required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Harga Satuan</label>
+                    <input type="number" value={form.hargaSatuan} onChange={e=>setForm({...form, hargaSatuan: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-black text-sm focus:border-indigo-500 transition-all" required />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 space-y-1.5">
+                    <label className="text-xs font-black text-indigo-500 uppercase tracking-wider block text-center">Total Nominal</label>
+                    <div className="w-full p-3 bg-indigo-600 text-white rounded-lg font-black text-sm text-center shadow-inner">
+                      {formatNumber(form.nominal)}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">Dokumentasi Visual (Maks 4)</label>
+                  <div className="grid grid-cols-4 gap-3">
+                    {form.photos.map((src, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 shadow-sm group">
+                        <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        <button type="button" onClick={() => setForm(p=>({ ...p, photos: p.photos.filter((_, i) => i !== idx) }))} className="absolute top-1 right-1 bg-rose-500 text-white p-1 rounded-full hover:bg-rose-600 shadow-lg"><X size={12} /></button>
+                      </div>
+                    ))}
+                    {form.photos.length < 4 && (
+                      <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-all text-slate-400 hover:text-indigo-600">
+                        <Camera size={24} />
+                        <span className="text-[10px] font-black uppercase mt-1.5">Upload</span>
+                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" multiple />
+                      </label>
+                    )}
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-slate-900 text-white p-4 rounded-xl font-black text-sm uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98]">
+                  <Save size={20} /> {editId ? 'SIMPAN PERUBAHAN' : 'SUBMIT DATA CLOUD'}
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5 animate-in fade-in slide-in-from-right-8 duration-500">
+            {/* Filter Section */}
+            <div className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col xl:flex-row gap-4 items-end">
+                <div className="flex-1 w-full space-y-1.5">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cari Data</label>
+                   <div className="relative">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input type="text" placeholder="Uraian atau Penyedia..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold focus:border-indigo-400 transition-all" />
+                   </div>
+                </div>
+
+                <div className="w-full xl:w-64 space-y-1.5">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Kerja</label>
+                   <div className="relative">
+                      <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm appearance-none cursor-pointer">
+                        <option value="Semua">Semua Unit</option>
+                        {unitKerjaOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                   </div>
+                </div>
+
+                <div className="w-full xl:w-auto flex flex-col md:flex-row gap-3">
+                  <div className="space-y-1.5 flex-1">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai</label>
+                     <div className="relative">
+                        <CalendarRange className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:border-indigo-400 transition-all" />
+                     </div>
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selesai</label>
+                     <div className="relative">
+                        <CalendarRange className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:border-indigo-400 transition-all" />
+                     </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full xl:w-auto">
+                   <button onClick={resetFilters} title="Reset Filter" className="p-2.5 bg-slate-100 text-slate-500 rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm active:scale-95">
+                      <X size={20} />
+                   </button>
+                   <button onClick={exportToExcel} className="flex-1 xl:flex-none bg-emerald-50 text-emerald-600 px-6 py-2.5 rounded-xl hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider border border-emerald-100 shadow-sm whitespace-nowrap active:scale-95">
+                      <Download size={16} /> Excel
+                   </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center w-24">Media</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Waktu & Unit</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Uraian Pekerjaan</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Penyedia</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">Vol</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">Harga Satuan</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">Total Harga</th>
+                    <th className="p-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center sticky right-0 bg-slate-50 z-10">Opsi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredData.map(item => (
+                    <tr key={item.id} className="hover:bg-indigo-50/40 transition-colors group">
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center -space-x-3">
+                          {item.photos?.slice(0, 3).map((ph, pi) => (
+                            <div key={pi} className="w-10 h-10 rounded-xl border-2 border-white overflow-hidden shadow-sm group-hover:scale-110 transition-transform">
+                              <img src={ph} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {(!item.photos || item.photos.length === 0) && (
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300">
+                              <ImageIcon size={16} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-500 uppercase tracking-tight">
+                            <Calendar size={12} /> {item.tanggalBelanja}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                            <Building2 size={12} className="text-slate-400" /> {item.unitKerja}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 max-w-xs">
+                        <div className="space-y-1">
+                          <p className="text-sm font-black text-slate-800 uppercase leading-tight line-clamp-2">{item.uraian}</p>
+                          <span className="inline-block px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded uppercase">{item.jenisPakaian}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                         <p className="text-xs font-bold text-slate-600">{item.penyedia || '-'}</p>
+                      </td>
+                      <td className="p-4 text-center">
+                         <span className="text-xs font-black text-slate-700 bg-slate-100 px-2 py-1 rounded-md">{item.volume}</span>
+                      </td>
+                      <td className="p-4 text-right">
+                         <p className="text-xs font-bold text-slate-500">{formatNumber(item.hargaSatuan)}</p>
+                      </td>
+                      <td className="p-4 text-right">
+                         <p className="text-sm font-black text-indigo-600">Rp {formatNumber(item.nominal)}</p>
+                      </td>
+                      <td className="p-4 sticky right-0 bg-white/95 backdrop-blur-sm z-10 group-hover:bg-indigo-50/95 transition-colors">
+                        <div className="flex justify-center gap-2">
+                           <button onClick={() => printF4Documentation(item)} title="Cetak F4" className="p-2.5 bg-white text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white shadow-sm transition-all active:scale-90">
+                             <Printer size={16} />
+                           </button>
+                           <button onClick={() => {setEditId(item.id); setForm({...item}); setActiveTab('input'); window.scrollTo(0,0)}} className="p-2.5 bg-white text-indigo-600 rounded-xl border border-indigo-100 hover:bg-indigo-600 hover:text-white shadow-sm transition-all active:scale-90">
+                             <Edit3 size={16} />
+                           </button>
+                           <button onClick={() => handleDelete(item.id)} className="p-2.5 bg-white text-rose-500 rounded-xl border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm transition-all active:scale-90">
+                             <Trash2 size={16} />
+                           </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+               <div className="flex gap-10">
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Entri</p>
+                    <p className="text-xl font-black text-slate-800">{stats.count}</p>
+                  </div>
+                  <div className="w-px h-10 bg-slate-100 hidden md:block"></div>
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Akumulasi Belanja</p>
+                    <p className="text-xl font-black text-indigo-600 uppercase">Rp {formatNumber(stats.total)}</p>
+                  </div>
+               </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[320px] bg-slate-900/95 backdrop-blur-xl p-1.5 rounded-[2rem] shadow-2xl z-50 flex border border-white/10">
+        <button onClick={() => setActiveTab('input')} className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[1.8rem] transition-all duration-300 ${activeTab === 'input' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
+          <Plus size={20} />
+          <span className="text-xs font-black uppercase tracking-widest">Input</span>
+        </button>
+        <button onClick={() => setActiveTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[1.8rem] transition-all duration-300 ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
+          <LayoutGrid size={20} />
+          <span className="text-xs font-black uppercase tracking-widest">Daftar</span>
+        </button>
+      </nav>
+    </div>
+  );
+}

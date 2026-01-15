@@ -1,0 +1,503 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithCustomToken, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Trash2, 
+  Edit3, 
+  Loader2, 
+  Plus, 
+  Search, 
+  CheckCircle2, 
+  AlertCircle, 
+  LayoutGrid,
+  Calendar,
+  Wallet,
+  FileSpreadsheet,
+  ShoppingBag,
+  ListChecks,
+  Info
+} from 'lucide-react';
+
+// --- Firebase Initialization ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'belanja-sosh-cloud-app';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('history');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('Menghubungkan');
+  
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+  const [listBelanja, setListBelanja] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterUnit, setFilterUnit] = useState('Semua');
+  
+  const [form, setForm] = useState({
+    unitPelayanan: '',
+    bulanTahun: '',
+    periodeLaporan: '',
+    uraianBelanja: '',
+    nominal: '',
+    catatan: ''
+  });
+
+  const unitOptions = [
+    "PPSDI Raharjo Sragen", 
+    "RPSLU Mojomulyo Sragen", 
+    "RPSA Pamardi Siwi Sragen", 
+    "RPS PMKS Gondang"
+  ];
+
+  const periodeOptions = ["I (Satu)", "II (Dua)", "III (Tiga)"];
+
+  const showNotif = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // --- Auth Flow ---
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { 
+        console.error("Auth Error:", err); 
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // --- Real-time Data Listeners ---
+  useEffect(() => {
+    if (!user) return;
+    setSyncStatus('Sinkronisasi...');
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'belanja_sosh_v1');
+    
+    const unsubscribe = onSnapshot(colRef, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setListBelanja(data.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+        setSyncStatus('Database Aktif');
+      }, 
+      (err) => {
+        console.error("Firestore Error:", err);
+        setSyncStatus('Terputus');
+        showNotif("Gagal sinkronisasi data!", "error");
+      }
+    );
+    return () => unsubscribe();
+  }, [user]);
+
+  const filteredData = useMemo(() => {
+    return listBelanja.filter(item => {
+      const matchSearch = (item.unitPelayanan?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+                          (item.uraianBelanja?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+                          (item.bulanTahun?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+      const matchUnit = filterUnit === 'Semua' || item.unitPelayanan === filterUnit;
+      return matchSearch && matchUnit;
+    });
+  }, [listBelanja, searchTerm, filterUnit]);
+
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      showNotif("Tidak ada data untuk dieksport", "error");
+      return;
+    }
+
+    let html = `
+      <table border="1">
+        <thead>
+          <tr style="background-color: #0f172a; color: #ffffff; font-weight: bold;">
+            <th>No</th>
+            <th>Unit Pelayanan</th>
+            <th>Bulan/Tahun</th>
+            <th>Periode</th>
+            <th>Uraian Belanja</th>
+            <th>Nominal</th>
+            <th>Catatan</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredData.map((item, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${item.unitPelayanan}</td>
+              <td>${item.bulanTahun}</td>
+              <td>${item.periodeLaporan}</td>
+              <td>${item.uraianBelanja}</td>
+              <td>${item.nominal}</td>
+              <td>${item.catatan || '-'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fileName = `Laporan_Belanja_SOSH_${new Date().toLocaleDateString('id-ID')}.xls`;
+    
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotif("Data Belanja SOSH dieksport ke Excel");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const payload = { 
+        ...form, 
+        updatedAt: Date.now()
+      };
+
+      const path = ['artifacts', appId, 'public', 'data', 'belanja_sosh_v1'];
+      
+      if (editId) {
+        await updateDoc(doc(db, ...path, editId), payload);
+        setEditId(null);
+      } else {
+        await addDoc(collection(db, ...path), payload);
+      }
+      
+      setForm({ 
+        unitPelayanan: '', bulanTahun: '', periodeLaporan: '', uraianBelanja: '', 
+        nominal: '', catatan: ''
+      });
+      setActiveTab('history');
+      showNotif("Data belanja SOSH berhasil disimpan");
+    } catch (err) { 
+      console.error(err);
+      showNotif("Gagal menyimpan data", "error"); 
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const yakin = window.confirm("Hapus data belanja SOSH ini secara permanen?");
+    if (!yakin) return;
+
+    setIsDeleting(id);
+    try {
+      const targetDoc = doc(db, 'artifacts', appId, 'public', 'data', 'belanja_sosh_v1', id);
+      await deleteDoc(targetDoc);
+      showNotif("Data dihapus", "success");
+    } catch (err) {
+      showNotif("Gagal menghapus", "error");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="animate-spin text-indigo-600" size={40} />
+        <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center">Menghubungkan ke Cloud<br/>Belanja SOSH...</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 text-slate-900 font-sans">
+      {/* Notifications */}
+      {notification.show && (
+        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl font-black text-sm uppercase flex items-center gap-4 animate-in fade-in zoom-in slide-in-from-top-8 ${notification.type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'}`}>
+           {notification.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} className="text-emerald-400" />}
+           {notification.message}
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 p-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg cursor-pointer" onClick={() => setActiveTab('history')}>
+            <ShoppingBag className="text-white w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xs font-black uppercase tracking-tight text-slate-800">BELANJA SOSH</h1>
+            <p className="text-[9px] font-bold text-indigo-500 uppercase">{syncStatus}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportExcel} 
+            className="hidden md:flex bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase items-center gap-2 hover:bg-emerald-700 transition-all shadow-md"
+          >
+            <FileSpreadsheet size={14} /> Export Excel
+          </button>
+          <button onClick={() => {setEditId(null); setActiveTab('input')}} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-md">
+            <Plus size={14} /> Input Belanja
+          </button>
+        </div>
+      </header>
+
+      <main className="p-4 md:p-6 max-w-[1200px] mx-auto">
+        {activeTab === 'input' ? (
+          <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-6">
+            <div className="bg-white p-6 md:p-12 rounded-[2.5rem] border border-slate-200 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 border-b border-slate-100 pb-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-3">
+                    <Plus className="text-indigo-600" size={24} /> {editId ? 'Edit Belanja SOSH' : 'Input Belanja SOSH Baru'}
+                  </h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Pastikan seluruh data yang diinput sudah sesuai dengan bukti riil</p>
+                </div>
+                {editId && (
+                  <button onClick={() => {setEditId(null); setForm({unitPelayanan: '', bulanTahun: '', periodeLaporan: '', uraianBelanja: '', nominal: '', catatan: ''})}} className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg self-start">Mode Input Baru</button>
+                )}
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Baris 1: Unit Pelayanan & Periode (2 Kolom) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1">Unit Pelayanan</label>
+                    <select 
+                      value={form.unitPelayanan} 
+                      onChange={e=>setForm({...form, unitPelayanan: e.target.value})} 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all appearance-none" 
+                      required
+                    >
+                      <option value="">Pilih Unit Pelayanan...</option>
+                      {unitOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1">Periode Laporan</label>
+                    <select 
+                      value={form.periodeLaporan} 
+                      onChange={e=>setForm({...form, periodeLaporan: e.target.value})} 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all appearance-none" 
+                      required
+                    >
+                      <option value="">Pilih Periode...</option>
+                      {periodeOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Baris 2: Bulan/Tahun & Nominal (2 Kolom) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1 flex items-center gap-1">
+                       <Calendar size={12}/> Bulan & Tahun
+                    </label>
+                    <input 
+                      type="month" 
+                      value={form.bulanTahun} 
+                      onChange={e=>setForm({...form, bulanTahun: e.target.value})} 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" 
+                      required 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1 flex items-center gap-1">
+                      <Wallet size={12}/> Nominal Belanja
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">Rp</span>
+                      <input 
+                        type="text" 
+                        placeholder="0"
+                        value={form.nominal} 
+                        onChange={e=>setForm({...form, nominal: e.target.value})} 
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" 
+                        required 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Baris 3: Uraian (1 Kolom Penuh) */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1">Uraian Belanja SOSH</label>
+                  <textarea 
+                    value={form.uraianBelanja} 
+                    onChange={e=>setForm({...form, uraianBelanja: e.target.value})} 
+                    placeholder="Contoh: Belanja permakanan PM reguler bulan Januari..."
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none h-32 resize-none transition-all shadow-inner" 
+                    required 
+                  />
+                </div>
+
+                {/* Baris 4: Catatan (1 Kolom Penuh) */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block ml-1 flex items-center gap-1">
+                    <Info size={12}/> Catatan Tambahan (Opsional)
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Keterangan tambahan jika ada..."
+                    value={form.catatan} 
+                    onChange={e=>setForm({...form, catatan: e.target.value})} 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" 
+                  />
+                </div>
+
+                {/* Actions Button Row */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-slate-100">
+                  <button type="button" onClick={()=>setActiveTab('history')} className="flex-1 p-5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all">Batal</button>
+                  <button type="submit" className="flex-[2] p-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-900/10 active:scale-95">
+                    {editId ? 'Perbarui Data Belanja' : 'Simpan Belanja SOSH'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Search and Filter */}
+            <div className="bg-white p-5 rounded-[2rem] border flex flex-col md:flex-row gap-4 shadow-sm items-center">
+               <div className="relative flex-1 w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="Cari Unit, Uraian, atau Bulan..." 
+                    value={searchTerm} 
+                    onChange={e=>setSearchTerm(e.target.value)} 
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 transition-all" 
+                  />
+               </div>
+               <select 
+                 value={filterUnit} 
+                 onChange={e=>setFilterUnit(e.target.value)} 
+                 className="w-full md:w-auto p-3 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20"
+               >
+                  <option value="Semua">Semua Unit</option>
+                  {unitOptions.map(o=><option key={o} value={o}>{o}</option>)}
+               </select>
+               <button 
+                onClick={handleExportExcel}
+                className="md:hidden flex bg-emerald-600 text-white p-3 rounded-2xl text-xs font-black uppercase items-center gap-2 justify-center w-full shadow-sm"
+               >
+                 <FileSpreadsheet size={16} /> Export
+               </button>
+            </div>
+
+            {/* List Table */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+              <table className="w-full text-left min-w-[950px]">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100">
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase w-12 text-center">No</th>
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase">Unit Pelayanan</th>
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase text-center">Bulan & Periode</th>
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase">Uraian Belanja SOSH</th>
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase">Nominal</th>
+                    <th className="p-5 text-[9px] font-black text-slate-400 uppercase text-center w-28">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {filteredData.length > 0 ? filteredData.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-indigo-50/30 transition-colors group">
+                      <td className="p-5 text-center text-[10px] font-bold text-slate-400">{index + 1}</td>
+                      <td className="p-5">
+                         <p className="font-black text-slate-800 text-[11px] uppercase tracking-tight">{item.unitPelayanan}</p>
+                      </td>
+                      <td className="p-5 text-center">
+                         <div className="flex flex-col items-center gap-1">
+                           <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-2.5 py-1 rounded-lg uppercase">{item.bulanTahun}</span>
+                           <span className="text-[8px] font-black text-indigo-500 uppercase">Periode {item.periodeLaporan?.split(' ')[0]}</span>
+                         </div>
+                      </td>
+                      <td className="p-5 max-w-xs">
+                         <p className="text-xs font-bold text-slate-600 line-clamp-2 leading-relaxed">{item.uraianBelanja}</p>
+                         {item.catatan && <p className="text-[9px] text-slate-400 mt-1 italic font-medium">NB: {item.catatan}</p>}
+                      </td>
+                      <td className="p-5">
+                         <span className="font-black text-emerald-600 text-sm whitespace-nowrap bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100">{item.nominal}</span>
+                      </td>
+                      <td className="p-5">
+                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button 
+                             onClick={()=>{setEditId(item.id); setForm(item); setActiveTab('input')}} 
+                             className="p-2.5 text-slate-400 hover:text-slate-900 transition-all rounded-xl hover:bg-white shadow-none hover:shadow-sm"
+                           >
+                             <Edit3 size={18}/>
+                           </button>
+                           <button 
+                             onClick={() => handleDelete(item.id)} 
+                             disabled={isDeleting === item.id}
+                             className={`p-2.5 rounded-xl transition-all ${isDeleting === item.id ? 'bg-slate-100 text-slate-300' : 'text-rose-400 hover:bg-rose-50 hover:text-rose-600'}`}
+                           >
+                             {isDeleting === item.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                           </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="p-20 text-center">
+                        <div className="flex flex-col items-center gap-3 text-slate-300">
+                          <ListChecks size={64} strokeWidth={1} />
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em]">Belum ada data Belanja SOSH</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Floating Bottom Nav */}
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[320px] bg-slate-900/90 backdrop-blur-xl shadow-2xl p-2.5 rounded-[2.5rem] z-50 flex border border-white/10 ring-8 ring-slate-900/5">
+        <button 
+          onClick={() => setActiveTab('input')} 
+          className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-[2rem] transition-all duration-300 ${activeTab === 'input' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <Plus size={20} />
+          <span className="text-[8px] font-black uppercase tracking-widest">Input</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('history')} 
+          className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-[2rem] transition-all duration-300 ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <LayoutGrid size={20} />
+          <span className="text-[8px] font-black uppercase tracking-widest">Data</span>
+        </button>
+      </nav>
+    </div>
+  );
+}

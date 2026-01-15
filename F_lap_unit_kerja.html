@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Laporan Unit Kerja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+        }
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .input-field {
+            transition: all 0.2s;
+        }
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        
+        <!-- BAGIAN FORMULIR -->
+        <div class="form-card p-6 md:p-8">
+            <div class="border-b pb-4 mb-6 flex justify-between items-center">
+                <div>
+                    <h1 id="formTitle" class="text-2xl font-bold text-gray-800 uppercase tracking-wide">Input Laporan Unit Kerja</h1>
+                    <p class="text-sm text-gray-500 mt-1">Silakan isi detail laporan untuk ditambahkan ke tabel.</p>
+                </div>
+                <div id="editBadge" class="hidden px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold animate-pulse">
+                    MODE EDIT
+                </div>
+            </div>
+
+            <form id="laporanForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input type="hidden" id="editId">
+                
+                <!-- 1. JENIS LAPORAN -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Jenis Laporan</label>
+                    <select id="jenis_laporan" required class="block w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none input-field">
+                        <option value="" disabled selected>Pilih Jenis Laporan</option>
+                        <option>LAPORAN TAHUNAN</option>
+                        <option>LAPORAN SEMESTER</option>
+                        <option>LAPORAN TRI WULAN</option>
+                        <option>PERJANJIAN KINERJA (PK)</option>
+                        <option>LAPORAN KINERJA (LKj)</option>
+                        <option>MANAJEMEN RESIKO (MR)</option>
+                        <option>LAPORAN LAINNYA</option>
+                    </select>
+                </div>
+
+                <!-- 2. UNIT KERJA -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Unit Kerja</label>
+                    <select id="unit_pelayanan" required class="block w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none input-field">
+                        <option value="" disabled selected>Pilih Unit Kerja</option>
+                        <option>PPSDI Raharjo Sragen</option>
+                        <option>RPSLU Mojomulyo Sragen</option>
+                        <option>RPSA Pinardi Siwi Sragen</option>
+                        <option>RPS PMKS Gondang</option>
+                    </select>
+                </div>
+
+                <!-- 3. SUB UNIT KERJA -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Sub Unit Kerja</label>
+                    <select id="sub_unit_kerja" required class="block w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none input-field">
+                        <option value="" disabled selected>Pilih Sub Unit Kerja</option>
+                        <option>PPSDI RAHARJO</option>
+                        <option>KEPALA PANTI</option>
+                        <option>KA. SUB. BAG. TATA USAHA</option>
+                        <option>PENYANTUNAN DAN RUJUKAN</option>
+                        <option>BIMBINGAN REHABILITASI SOSIAL</option>
+                    </select>
+                </div>
+
+                <!-- 4. TAHUN LAPORAN -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Tahun Laporan</label>
+                    <select id="tahun" required class="block w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none input-field">
+                        <option value="" disabled selected>Pilih Tahun</option>
+                    </select>
+                </div>
+
+                <!-- 5. NAMA PELAPOR -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Pelapor</label>
+                    <input type="text" id="pelapor" placeholder="Masukkan nama lengkap" required class="block w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none input-field">
+                </div>
+
+                <!-- 6. KETERANGAN -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Keterangan Laporan</label>
+                    <textarea id="keterangan" rows="2" placeholder="Masukkan ringkasan laporan..." class="block w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none input-field"></textarea>
+                </div>
+
+                <!-- 7. UPLOAD FILE -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Upload File PDF</label>
+                    <div class="relative border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center hover:bg-gray-50 transition cursor-pointer">
+                        <input type="file" id="file_pdf" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <div class="text-center">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-blue-500 mb-1"></i>
+                            <p class="text-xs text-gray-600" id="file_name">Klik untuk unggah PDF</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 flex gap-3 pt-2">
+                    <button type="submit" id="btnSubmit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center">
+                        <i class="fas fa-plus mr-2"></i> <span id="btnText">Tambah Data</span>
+                    </button>
+                    <button type="button" id="btnCancel" class="hidden px-6 py-3 border border-yellow-500 text-yellow-600 rounded-lg hover:bg-yellow-50 transition">
+                        Batal Edit
+                    </button>
+                    <button type="reset" id="btnReset" class="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 transition">
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- BAGIAN TABEL DATA -->
+        <div class="form-card p-6 md:p-8 overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Daftar Laporan Terkirim</h2>
+                    <p class="text-sm text-gray-500">Kelola dan ekspor data laporan.</p>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center transition">
+                        <i class="fas fa-file-excel mr-2"></i> Ekspor Excel
+                    </button>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="fas fa-search text-sm"></i>
+                        </span>
+                        <input type="text" id="searchInput" placeholder="Cari..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-48">
+                    </div>
+                    <select id="filterUnit" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                        <option value="">Semua Unit</option>
+                        <option>PPSDI Raharjo Sragen</option>
+                        <option>RPSLU Mojomulyo Sragen</option>
+                        <option>RPSA Pinardi Siwi Sragen</option>
+                        <option>RPS PMKS Gondang</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabel -->
+            <div class="overflow-x-auto custom-scrollbar border rounded-lg">
+                <table id="reportTable" class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase">No</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase">Jenis Laporan</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase">Unit / Sub Unit</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase">Tahun</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase">Pelapor</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase text-center">File</th>
+                            <th class="px-4 py-3 text-xs font-bold text-gray-600 uppercase text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y text-sm text-gray-700">
+                        <tr id="emptyRow">
+                            <td colspan="7" class="px-4 py-10 text-center text-gray-400 italic">Belum ada data laporan tersedia.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 flex items-center justify-between text-xs text-gray-500">
+                <p id="rowCountDisplay">Menampilkan 0 data</p>
+                <p>Data dikelola secara lokal</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let dataLaporan = JSON.parse(localStorage.getItem('laporan_db')) || [];
+        let isEditing = false;
+        
+        const form = document.getElementById('laporanForm');
+        const tableBody = document.getElementById('tableBody');
+        const searchInput = document.getElementById('searchInput');
+        const filterUnit = document.getElementById('filterUnit');
+        const fileInput = document.getElementById('file_pdf');
+        const fileNameDisplay = document.getElementById('file_name');
+        const btnText = document.getElementById('btnText');
+        const btnCancel = document.getElementById('btnCancel');
+        const formTitle = document.getElementById('formTitle');
+        const editBadge = document.getElementById('editBadge');
+
+        // Init Tahun
+        const currentYear = new Date().getFullYear();
+        const tahunSelect = document.getElementById('tahun');
+        for (let i = currentYear; i >= currentYear - 5; i--) {
+            const opt = document.createElement('option');
+            opt.value = i; opt.text = i;
+            tahunSelect.appendChild(opt);
+        }
+
+        function renderTable(filterText = '', unitFilter = '') {
+            tableBody.innerHTML = '';
+            
+            const filteredData = dataLaporan.filter(item => {
+                const matchesSearch = item.pelapor.toLowerCase().includes(filterText.toLowerCase()) || 
+                                     item.jenis.toLowerCase().includes(filterText.toLowerCase()) ||
+                                     item.keterangan.toLowerCase().includes(filterText.toLowerCase());
+                const matchesUnit = unitFilter === '' || item.unit === unitFilter;
+                return matchesSearch && matchesUnit;
+            });
+
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-gray-400 italic">Data tidak ditemukan.</td></tr>`;
+                document.getElementById('rowCountDisplay').innerText = `Menampilkan 0 data`;
+                return;
+            }
+
+            filteredData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium">${index + 1}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100">${item.jenis}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-gray-800">${item.unit}</div>
+                        <div class="text-xs text-gray-500">${item.sub_unit}</div>
+                    </td>
+                    <td class="px-4 py-3">${item.tahun}</td>
+                    <td class="px-4 py-3">${item.pelapor}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="downloadFile('${item.jenis}', '${item.pelapor}')" title="Download PDF" class="text-red-500 hover:scale-110 transition">
+                            <i class="fas fa-file-pdf text-lg"></i>
+                        </button>
+                    </td>
+                    <td class="px-4 py-3 text-center space-x-2">
+                        <button onclick="editData(${item.id})" class="text-blue-500 hover:text-blue-700 p-1">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="hapusData(${item.id})" class="text-gray-400 hover:text-red-600 p-1">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById('rowCountDisplay').innerText = `Menampilkan ${filteredData.length} data`;
+        }
+
+        window.editData = (id) => {
+            const item = dataLaporan.find(d => d.id === id);
+            if (!item) return;
+
+            isEditing = true;
+            document.getElementById('editId').value = item.id;
+            document.getElementById('jenis_laporan').value = item.jenis;
+            document.getElementById('unit_pelayanan').value = item.unit;
+            document.getElementById('sub_unit_kerja').value = item.sub_unit;
+            document.getElementById('tahun').value = item.tahun;
+            document.getElementById('pelapor').value = item.pelapor;
+            document.getElementById('keterangan').value = item.keterangan;
+
+            formTitle.innerText = "Edit Laporan Unit Kerja";
+            btnText.innerText = "Simpan Perubahan";
+            btnCancel.classList.remove('hidden');
+            editBadge.classList.remove('hidden');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        btnCancel.onclick = () => {
+            isEditing = false;
+            form.reset();
+            formTitle.innerText = "Input Laporan Unit Kerja";
+            btnText.innerText = "Tambah Data";
+            btnCancel.classList.add('hidden');
+            editBadge.classList.add('hidden');
+            fileNameDisplay.innerText = "Klik untuk unggah PDF";
+        };
+
+        window.hapusData = (id) => {
+            if(confirm('Hapus data ini?')) {
+                dataLaporan = dataLaporan.filter(item => item.id !== id);
+                localStorage.setItem('laporan_db', JSON.stringify(dataLaporan));
+                renderTable(searchInput.value, filterUnit.value);
+            }
+        };
+
+        window.downloadFile = (jenis, pelapor) => {
+            alert(`Mendownload file: ${jenis}_${pelapor}.pdf\n(Ini adalah simulasi download)`);
+            // Logika download asli biasanya menggunakan window.open(url) atau file blob
+        };
+
+        window.exportToExcel = () => {
+            if (dataLaporan.length === 0) {
+                alert("Tidak ada data untuk diekspor.");
+                return;
+            }
+
+            let excelContent = "No\tJenis Laporan\tUnit\tSub Unit\tTahun\tPelapor\tKeterangan\n";
+            dataLaporan.forEach((item, index) => {
+                excelContent += `${index + 1}\t${item.jenis}\t${item.unit}\t${item.sub_unit}\t${item.tahun}\t${item.pelapor}\t${item.keterangan}\n`;
+            });
+
+            const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Laporan_Unit_Kerja_${new Date().getTime()}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        };
+
+        fileInput.addEventListener('change', (e) => {
+            if (fileNameDisplay) {
+                fileNameDisplay.innerText = e.target.files[0] ? e.target.files[0].name : "Klik untuk unggah PDF";
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                jenis: document.getElementById('jenis_laporan').value,
+                unit: document.getElementById('unit_pelayanan').value,
+                sub_unit: document.getElementById('sub_unit_kerja').value,
+                tahun: document.getElementById('tahun').value,
+                pelapor: document.getElementById('pelapor').value,
+                keterangan: document.getElementById('keterangan').value,
+            };
+
+            if (isEditing) {
+                const id = parseInt(document.getElementById('editId').value);
+                const index = dataLaporan.findIndex(d => d.id === id);
+                dataLaporan[index] = { ...dataLaporan[index], ...formData };
+                isEditing = false;
+                btnCancel.click(); // Reset UI mode
+            } else {
+                dataLaporan.unshift({
+                    ...formData,
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString()
+                });
+            }
+
+            localStorage.setItem('laporan_db', JSON.stringify(dataLaporan));
+            form.reset();
+            fileNameDisplay.innerText = "Klik untuk unggah PDF";
+            renderTable();
+            
+            alert(isEditing ? "Data berhasil diperbarui!" : "Data berhasil ditambahkan!");
+        });
+
+        searchInput.addEventListener('input', () => renderTable(searchInput.value, filterUnit.value));
+        filterUnit.addEventListener('change', () => renderTable(searchInput.value, filterUnit.value));
+
+        window.onload = () => renderTable();
+    </script>
+</body>
+</html>

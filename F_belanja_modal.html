@@ -1,0 +1,388 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithCustomToken, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Save, 
+  Trash2, 
+  Edit3, 
+  Loader2, 
+  Plus, 
+  X, 
+  Search, 
+  Download, 
+  ShoppingBag,
+  FileText,
+  List,
+  PlusCircle,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Calendar,
+  Package
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'pakaian-monitoring-vibrant';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('history');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('Terhubung');
+  
+  // State Notifikasi Dinamis (Warning Box)
+  const [notification, setNotification] = useState({ 
+    show: false, 
+    message: '', 
+    type: 'success', // success, info, error
+  });
+
+  const [listPakaian, setListPakaian] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterUnit, setFilterUnit] = useState('Semua');
+  
+  const [form, setForm] = useState({
+    unitKerja: '',
+    tanggalBelanja: '',
+    uraian: '',
+    namaBarang: '',
+    merk: '',
+    ukuran: '',
+    warna: '',
+    model: '',
+    penyedia: '',
+    volume: '',
+    hargaSatuan: '',
+    nominal: 0,
+    photos: [],
+    pdfFiles: []
+  });
+
+  const unitKerjaOptions = ["PPSDI Raharjo Sragen", "RPSLU Mojomulyo Sragen", "RPSA Pamardi Siwi Sragen", "RPS PMKS Gondang"];
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth Error:", err); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const colPath = collection(db, 'artifacts', appId, 'public', 'data', 'pakaian');
+    const unsubscribe = onSnapshot(colPath, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setListPakaian(data.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+      setSyncStatus('Data Base Aktif');
+    }, (err) => {
+      setSyncStatus('Offline');
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    const vol = parseFloat(form.volume) || 0;
+    const price = parseFloat(form.hargaSatuan) || 0;
+    setForm(prev => ({ ...prev, nominal: vol * price }));
+  }, [form.volume, form.hargaSatuan]);
+
+  // Fungsi pemicu Notifikasi (Kotak Warning)
+  const triggerNotif = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 4000);
+  };
+
+  const formatNumber = (val) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val || 0);
+
+  const resetForm = () => {
+    setForm({ unitKerja: '', tanggalBelanja: '', uraian: '', namaBarang: '', merk: '', ukuran: '', warna: '', model: '', penyedia: '', volume: '', hargaSatuan: '', nominal: 0, photos: [], pdfFiles: [] });
+    setEditId(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const payload = { ...form, updatedAt: Date.now() };
+    try {
+      if (editId) {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pakaian', editId), payload);
+        triggerNotif("Data Berhasil Diubah", "info");
+      } else {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'pakaian'), payload);
+        triggerNotif("Data Berhasil Tersimpan", "success");
+      }
+      resetForm();
+      setActiveTab('history');
+    } catch (err) { 
+      triggerNotif("Gagal memproses data", "error"); 
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pakaian', id));
+      triggerNotif("Data Berhasil Terhapus", "error");
+    } catch (err) { 
+      triggerNotif("Gagal menghapus data", "error");
+    }
+  };
+
+  const filteredData = useMemo(() => {
+    return listPakaian.filter(item => {
+      const searchableText = `${item.uraian} ${item.namaBarang} ${item.unitKerja}`.toLowerCase();
+      const matchSearch = searchableText.includes(searchTerm.toLowerCase());
+      const matchUnit = filterUnit === 'Semua' || item.unitKerja === filterUnit;
+      return matchSearch && matchUnit;
+    });
+  }, [listPakaian, searchTerm, filterUnit]);
+
+  if (loading) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-blue-500" /></div>;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans antialiased">
+      
+      {/* NOTIFIKASI / WARNING BOX */}
+      {notification.show && (
+        <div className="fixed top-6 right-6 z-[100] animate-in slide-in-from-right duration-300">
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border-l-4 min-w-[320px] bg-white ${
+            notification.type === 'success' ? 'border-emerald-500' : 
+            notification.type === 'error' ? 'border-rose-500' : 'border-blue-500'
+          }`}>
+            <div className={`p-2 rounded-full ${
+              notification.type === 'success' ? 'bg-emerald-50 text-emerald-500' : 
+              notification.type === 'error' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'
+            }`}>
+              {notification.type === 'success' && <CheckCircle2 size={20} />}
+              {notification.type === 'error' && <AlertCircle size={20} />}
+              {notification.type === 'info' && <RefreshCw size={20} className="animate-spin-slow" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Sistem</p>
+              <p className="text-sm font-bold text-slate-800">{notification.message}</p>
+            </div>
+            <button onClick={() => setNotification(p => ({...p, show: false}))} className="text-slate-300 hover:text-slate-600 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+              <ShoppingBag className="text-white w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-sm font-black uppercase tracking-tight text-slate-900 leading-none">MONITORING BELANJA</h1>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1 mt-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> {syncStatus}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => { resetForm(); setActiveTab('input'); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-700 shadow-md transition-all active:scale-95"
+          >
+            <Plus size={14} /> Data Baru
+          </button>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto p-6">
+        {activeTab === 'input' ? (
+          <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+            <div className="bg-slate-900 p-6 flex justify-between items-center">
+              <h2 className="text-white font-black text-xs uppercase tracking-widest">
+                {editId ? 'Ubah Data Belanja' : 'Simpan Data Belanja Baru'}
+              </h2>
+              <button onClick={() => setActiveTab('history')} className="text-slate-400 hover:text-white"><X /></button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Kerja</label>
+                  <select 
+                    value={form.unitKerja} 
+                    onChange={e => setForm({...form, unitKerja: e.target.value})} 
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                    required
+                  >
+                    <option value="">Pilih...</option>
+                    {unitKerjaOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</label>
+                  <input 
+                    type="date" 
+                    value={form.tanggalBelanja} 
+                    onChange={e => setForm({...form, tanggalBelanja: e.target.value})} 
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Uraian / Deskripsi</label>
+                <input 
+                  type="text" 
+                  value={form.uraian} 
+                  onChange={e => setForm({...form, uraian: e.target.value})} 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                  placeholder="Kebutuhan rincian..." 
+                  required 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Barang</label>
+                  <input type="text" value={form.namaBarang} onChange={e => setForm({...form, namaBarang: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Volume</label>
+                  <input type="number" value={form.volume} onChange={e => setForm({...form, volume: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</label>
+                  <input type="number" value={form.hargaSatuan} onChange={e => setForm({...form, hargaSatuan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required />
+                </div>
+              </div>
+
+              <div className="bg-indigo-600 p-6 rounded-2xl flex justify-between items-center shadow-inner">
+                <span className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">Total Belanja</span>
+                <span className="text-xl font-black text-white">Rp {formatNumber(form.nominal)}</span>
+              </div>
+
+              <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                <Save size={18} /> {editId ? 'Perbarui Perubahan' : 'Simpan Data'}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Cari data..." 
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <select 
+                className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-black uppercase outline-none"
+                value={filterUnit}
+                onChange={(e) => setFilterUnit(e.target.value)}
+              >
+                <option value="Semua">Semua Unit Kerja</option>
+                {unitKerjaOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="p-4 text-[10px] font-black text-slate-400 uppercase text-center w-12">No</th>
+                    <th className="p-4 text-[10px] font-black text-slate-400 uppercase">Unit Kerja</th>
+                    <th className="p-4 text-[10px] font-black text-slate-400 uppercase">Barang / Uraian</th>
+                    <th className="p-4 text-[10px] font-black text-slate-400 uppercase">Total Nominal</th>
+                    <th className="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Opsi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredData.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors group">
+                      <td className="p-4 text-center text-xs font-bold text-slate-300">{index + 1}</td>
+                      <td className="p-4 text-[10px] font-black text-indigo-600 uppercase">{item.unitKerja}</td>
+                      <td className="p-4">
+                        <div className="text-xs font-black text-slate-800 uppercase">{item.namaBarang}</div>
+                        <div className="text-[10px] text-slate-400 italic">{item.uraian}</div>
+                      </td>
+                      <td className="p-4 text-xs font-black text-indigo-700">Rp {formatNumber(item.nominal)}</td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => { setForm({...item}); setEditId(item.id); setActiveTab('input'); }}
+                            className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="p-2 text-rose-400 hover:bg-rose-50 rounded-lg transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-slate-900 p-2 rounded-2xl shadow-2xl border border-white/10 gap-2 z-50">
+        <button 
+          onClick={() => { setEditId(null); setActiveTab('history'); }}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${activeTab === 'history' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+        >
+          <List size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Daftar</span>
+        </button>
+        <button 
+          onClick={() => { resetForm(); setActiveTab('input'); }}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${activeTab === 'input' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+        >
+          <PlusCircle size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Input</span>
+        </button>
+      </div>
+
+    </div>
+  );
+}

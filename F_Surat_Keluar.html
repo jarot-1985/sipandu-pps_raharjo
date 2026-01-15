@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipandu - Sistem Pengajuan Nomor Surat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .admin-badge {
+            position: absolute;
+            bottom: -8px;
+            right: -8px;
+            background-color: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 300;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8 text-slate-900">
+
+    <!-- Loading Indicator -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-bold text-slate-700">Memproses & Mengunggah...</p>
+    </div>
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header & Admin Access -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-bold text-slate-800 tracking-tight text-blue-700">Sipandu</h1>
+                <p class="text-slate-600 font-medium">Sistem Pengajuan & Penomoran Surat Otomatis</p>
+                <div id="connectionStatus" class="text-[10px] mt-1 flex items-center gap-1 text-slate-400">
+                    <span class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></span> Menghubungkan ke Database...
+                </div>
+            </div>
+            <div id="adminAccessSection" class="relative">
+                <button id="btnLoginAdmin" onclick="toggleAdminLogin()" class="relative flex items-center gap-2 bg-white border border-slate-300 text-slate-600 px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-all shadow-sm font-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Akses Admin
+                    <span id="adminNotificationBadge" class="hidden admin-badge">0</span>
+                </button>
+                <button id="btnLogoutAdmin" onclick="logoutAdmin()" class="hidden flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl hover:bg-rose-700 transition-all shadow-md font-semibold">
+                    Keluar Admin
+                </button>
+            </div>
+        </header>
+
+        <div class="flex flex-col gap-8">
+            <!-- Form Section -->
+            <section id="formPemohon">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                    <h2 id="formTitle" class="text-xl font-bold mb-6 flex items-center gap-2 text-blue-600 border-b pb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Buat Pengajuan Nomor Surat
+                    </h2>
+                    
+                    <form id="suratForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <input type="hidden" id="editId" value="">
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Nama Pemohon</label>
+                                <input type="text" id="pemohon" placeholder="Masukkan nama lengkap" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Kategori Surat</label>
+                                <select id="kategori" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 transition-all bg-white outline-none">
+                                    <option value="SK">Surat Keputusan (SK)</option>
+                                    <option value="ST">Surat Tugas (ST)</option>
+                                    <option value="ND">Nota Dinas (ND)</option>
+                                    <option value="UND">Undangan (UND)</option>
+                                    <option value="MOA">Memorandum (MOA)</option>
+                                    <option value="SP">Surat Pengantar (SP)</option>
+                                    <option value="LAIN">Surat Lainnya</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Perihal / Subjek</label>
+                                <input type="text" id="perihal" placeholder="Contoh: Permohonan Kerjasama" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Tujuan Surat</label>
+                                <input type="text" id="tujuan" placeholder="Nama Instansi/Tujuan" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Tanggal Surat</label>
+                                <input type="date" id="tanggal" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Lampiran (Max 800KB)</label>
+                                <div id="currentFileName" class="text-xs text-blue-600 mb-1 hidden font-medium"></div>
+                                <input type="file" id="lampiran" accept="image/*,.pdf" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-300 rounded-xl p-1.5">
+                                <p class="text-[10px] text-slate-400 mt-1 italic">* Gambar akan dikompresi otomatis agar muat di database.</p>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2 flex gap-3 mt-2">
+                            <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                <span>Kirim Pengajuan</span>
+                            </button>
+                            <button type="button" id="cancelEditBtn" onclick="resetForm()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-8 py-4 rounded-2xl transition-all">
+                                Batal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Pending Section (Admin) -->
+            <section id="pendingSection" class="hidden">
+                <div class="bg-amber-50 rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
+                    <div class="p-6 border-b border-amber-200 flex justify-between items-center bg-amber-100/50">
+                        <h2 class="text-xl font-bold text-amber-800 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Antrean Persetujuan Admin
+                        </h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-amber-100 text-amber-700 text-xs uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4">Draft Nomor</th>
+                                    <th class="px-6 py-4">Pemohon & Tujuan</th>
+                                    <th class="px-6 py-4 text-center">Aksi Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody" class="divide-y divide-amber-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Section -->
+            <section>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                            Daftar & Status Surat
+                        </h2>
+                        <span id="counter" class="bg-blue-100 text-blue-700 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">0 Data</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase font-bold tracking-widest border-b">
+                                <tr>
+                                    <th class="px-6 py-4 w-12 text-center"># Urut</th>
+                                    <th class="px-6 py-4">Nomor Surat</th>
+                                    <th class="px-6 py-4">Pemohon / Perihal</th>
+                                    <th class="px-6 py-4">Tujuan</th>
+                                    <th class="px-6 py-4 text-center">Status</th>
+                                    <th class="px-6 py-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allSuratTableBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div id="emptyState" class="p-20 text-center text-slate-400">
+                            <p class="text-lg font-semibold text-slate-500">Memuat data cloud...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+            <div class="p-8 text-center border-b">
+                <h3 class="text-2xl font-bold text-slate-800">Admin Login</h3>
+                <p class="text-sm text-slate-500 mt-1">Masukkan PIN Sipandu</p>
+            </div>
+            <div class="p-8">
+                <input type="password" id="pinInput" placeholder="***" maxlength="3" class="w-full text-center text-4xl tracking-[0.5em] font-bold py-5 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:outline-none transition-all">
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <button onclick="closeModal()" class="py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Batal</button>
+                    <button onclick="verifyPin()" class="py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">Masuk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rejectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+            <div class="p-8 text-center border-b bg-rose-50">
+                <h3 class="text-2xl font-bold text-rose-800">Tolak Pengajuan</h3>
+            </div>
+            <div class="p-8">
+                <textarea id="rejectReasonInput" rows="4" placeholder="Berikan alasan penolakan..." class="w-full p-5 border border-slate-200 rounded-2xl focus:border-rose-500 outline-none resize-none transition-all"></textarea>
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <button onclick="closeRejectModal()" class="py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Batal</button>
+                    <button id="btnConfirmReject" class="py-4 bg-rose-600 text-white rounded-2xl font-bold shadow-lg">Konfirmasi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-slate-900 text-white px-8 py-5 rounded-3xl shadow-2xl translate-y-32 opacity-0 transition-all duration-500 z-[200] flex items-center gap-4 font-semibold">
+        <span id="toastIcon">✅</span>
+        <span id="toastMsg">Berhasil!</span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        // Firebase Configuration
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sipandu-app';
+
+        // UI State
+        let isAdmin = false;
+        let databaseSurat = [];
+        let currentRejectId = null;
+        let user = null;
+
+        // Path (RULE 1)
+        const collectionPath = `artifacts/${appId}/public/data/surat`;
+
+        // Elements
+        const form = document.getElementById('suratForm');
+        const pendingTableBody = document.getElementById('pendingTableBody');
+        const allSuratTableBody = document.getElementById('allSuratTableBody');
+        const pendingSection = document.getElementById('pendingSection');
+        const emptyState = document.getElementById('emptyState');
+        const counter = document.getElementById('counter');
+        const toast = document.getElementById('toast');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Auth
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (user) {
+                document.getElementById('connectionStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cloud Database Terhubung';
+                listenToData();
+            }
+        });
+
+        const listenToData = () => {
+            if (!user) return;
+            onSnapshot(collection(db, collectionPath), (snapshot) => {
+                databaseSurat = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                databaseSurat.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                updateUI();
+            });
+        };
+
+        // Utility: Compress Image
+        const compressImage = async (file) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Max width/height 1200px
+                        const maxDim = 1200;
+                        if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                                height *= maxDim / width;
+                                width = maxDim;
+                            } else {
+                                width *= maxDim / height;
+                                height = maxDim;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Compression quality 0.6 (JPEG)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        resolve(dataUrl);
+                    };
+                };
+            });
+        };
+
+        // Utility: Convert File to Base64 (Standard)
+        const fileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        };
+
+        const showToast = (msg, isError = false) => {
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').innerText = isError ? '❌' : '✅';
+            toast.classList.remove('translate-y-32', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-32', 'opacity-0'), 3000);
+        };
+
+        window.toggleAdminLogin = () => document.getElementById('loginModal').classList.remove('hidden');
+        window.closeModal = () => document.getElementById('loginModal').classList.add('hidden');
+        window.closeRejectModal = () => document.getElementById('rejectModal').classList.add('hidden');
+
+        window.verifyPin = () => {
+            if (document.getElementById('pinInput').value === "888") {
+                isAdmin = true;
+                document.getElementById('btnLoginAdmin').classList.add('hidden');
+                document.getElementById('btnLogoutAdmin').classList.remove('hidden');
+                showToast('Admin Terverifikasi');
+                window.closeModal();
+                updateUI();
+            } else {
+                showToast('PIN Salah', true);
+            }
+        };
+
+        window.logoutAdmin = () => {
+            isAdmin = false;
+            document.getElementById('btnLoginAdmin').classList.remove('hidden');
+            document.getElementById('btnLogoutAdmin').classList.add('hidden');
+            updateUI();
+        };
+
+        const updateUI = () => {
+            const pendingItems = databaseSurat.filter(s => s.status === 'pending');
+            document.getElementById('adminNotificationBadge').innerText = pendingItems.length;
+            document.getElementById('adminNotificationBadge').classList.toggle('hidden', pendingItems.length === 0);
+            
+            if (isAdmin && pendingItems.length > 0) {
+                pendingSection.classList.remove('hidden');
+                pendingTableBody.innerHTML = pendingItems.map(s => `
+                    <tr class="bg-white/50">
+                        <td class="px-6 py-4">
+                            <input type="text" value="${s.nomor}" onchange="window.updateNomor('${s.id}', this.value)" class="w-full border rounded px-2 py-1 font-mono text-xs">
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-xs">${s.pemohon}</div>
+                            <div class="text-[10px] text-slate-400">${s.tujuan}</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="window.setStatus('${s.id}', 'approved')" class="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold">Approve</button>
+                            <button onclick="window.openReject('${s.id}')" class="bg-rose-100 text-rose-700 px-3 py-1 rounded text-[10px] font-bold">Tolak</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                pendingSection.classList.add('hidden');
+            }
+
+            if (databaseSurat.length > 0) {
+                emptyState.classList.add('hidden');
+                counter.innerText = `${databaseSurat.length} Data`;
+                allSuratTableBody.innerHTML = databaseSurat.map((s, idx) => {
+                    const paddedUrut = String(databaseSurat.length - idx).padStart(3, '0');
+                    return `
+                        <tr class="text-xs hover:bg-slate-50">
+                            <td class="px-6 py-4 font-mono text-center text-slate-400">#${paddedUrut}</td>
+                            <td class="px-6 py-4">
+                                <span class="font-mono font-bold ${s.status === 'approved' ? 'text-blue-600' : 'text-slate-400'}">${s.nomor}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-bold">${s.pemohon}</div>
+                                <div class="text-[10px] text-slate-400 truncate max-w-[120px]">${s.perihal}</div>
+                            </td>
+                            <td class="px-6 py-4">${s.tujuan}</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                    s.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 
+                                    s.status === 'rejected' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                                }">${s.status.toUpperCase()}</span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex justify-center gap-1">
+                                    ${s.status === 'rejected' ? `<button onclick="window.editMode('${s.id}')" class="text-amber-500">✎</button>` : ''}
+                                    ${s.lampiranData ? `<button onclick="window.downloadFile('${s.lampiranData}', '${s.lampiranName}')" class="text-blue-500">💾</button>` : ''}
+                                    ${isAdmin ? `<button onclick="window.delEntry('${s.id}')" class="text-rose-300">✕</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = '<p class="text-slate-300 italic">Belum ada pengajuan.</p>';
+            }
+        };
+
+        window.setStatus = async (id, status, alasan = '') => {
+            if (!user) return;
+            await updateDoc(doc(db, collectionPath, id), { status, alasan });
+            showToast(`Status: ${status}`);
+        };
+
+        window.openReject = (id) => { currentRejectId = id; document.getElementById('rejectModal').classList.remove('hidden'); };
+        
+        document.getElementById('btnConfirmReject').onclick = () => {
+            const reason = document.getElementById('rejectReasonInput').value;
+            if (!reason) return showToast("Alasan harus diisi", true);
+            window.setStatus(currentRejectId, 'rejected', reason);
+            window.closeRejectModal();
+        };
+
+        window.updateNomor = async (id, val) => {
+            if (!user) return;
+            await updateDoc(doc(db, collectionPath, id), { nomor: val });
+        };
+
+        window.delEntry = async (id) => {
+            if (!user || !confirm("Hapus data ini secara permanen?")) return;
+            await deleteDoc(doc(db, collectionPath, id));
+            showToast("Terhapus dari cloud", true);
+        };
+
+        window.downloadFile = (data, name) => {
+            const a = document.createElement('a');
+            a.href = data;
+            a.download = name;
+            a.click();
+        };
+
+        window.editMode = (id) => {
+            const s = databaseSurat.find(x => x.id === id);
+            if (s) {
+                document.getElementById('editId').value = s.id;
+                document.getElementById('pemohon').value = s.pemohon;
+                document.getElementById('perihal').value = s.perihal;
+                document.getElementById('tujuan').value = s.tujuan;
+                document.getElementById('kategori').value = s.kategori;
+                document.getElementById('tanggal').value = s.tanggalRaw;
+                document.getElementById('formTitle').innerText = "Revisi Pengajuan";
+                document.getElementById('submitBtn').querySelector('span').innerText = "Update & Kirim Ulang";
+                document.getElementById('cancelEditBtn').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.resetForm = () => {
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('formTitle').innerText = "Buat Pengajuan Nomor Surat";
+            document.getElementById('submitBtn').querySelector('span').innerText = "Kirim Pengajuan";
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('tanggal').valueAsDate = new Date();
+        };
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            if (!user) return showToast("Sistem belum siap", true);
+
+            const editId = document.getElementById('editId').value;
+            const fileInput = document.getElementById('lampiran');
+            let lampData = '';
+            let lampName = '';
+
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                if (fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    lampName = file.name;
+
+                    // Periksa apakah file terlalu besar (Max awal 5MB untuk peringatan sebelum proses)
+                    if (file.size > 5 * 1024 * 1024) {
+                        loadingOverlay.style.display = 'none';
+                        return showToast("File terlalu besar (>5MB). Gunakan file lebih kecil.", true);
+                    }
+
+                    if (file.type.startsWith('image/')) {
+                        // Kompresi otomatis untuk gambar
+                        lampData = await compressImage(file);
+                    } else {
+                        // PDF atau file lain diproses langsung
+                        lampData = await fileToBase64(file);
+                    }
+
+                    // Validasi akhir ukuran data Base64 (Maksimum dokumen Firestore ~1MB)
+                    // Kita batasi ke 800KB untuk keamanan metadata lainnya
+                    if (lampData.length > 1000000) {
+                        loadingOverlay.style.display = 'none';
+                        return showToast("File hasil kompresi masih terlalu besar (>800KB).", true);
+                    }
+                }
+
+                const data = {
+                    pemohon: document.getElementById('pemohon').value,
+                    perihal: document.getElementById('perihal').value,
+                    tujuan: document.getElementById('tujuan').value,
+                    kategori: document.getElementById('kategori').value,
+                    tanggalRaw: document.getElementById('tanggal').value,
+                    status: 'pending',
+                    alasan: '',
+                    updatedAt: serverTimestamp()
+                };
+
+                if (lampData) {
+                    data.lampiranName = lampName;
+                    data.lampiranData = lampData;
+                }
+
+                if (editId) {
+                    await updateDoc(doc(db, collectionPath, editId), data);
+                    showToast("Pengajuan diperbarui");
+                } else {
+                    data.createdAt = serverTimestamp();
+                    const year = new Date().getFullYear();
+                    const paddedIndex = String(databaseSurat.length + 1).padStart(3, '0');
+                    const romawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+                    data.nomor = `${paddedIndex}/${data.kategori}/ADM/${romawi[new Date().getMonth()]}/${year}`;
+                    
+                    await addDoc(collection(db, collectionPath), data);
+                    showToast("Berhasil terkirim ke cloud");
+                }
+                window.resetForm();
+            } catch (err) {
+                console.error("Save Error:", err);
+                showToast("Gagal simpan (File mungkin terlalu besar)", true);
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        };
+
+        initAuth();
+        document.getElementById('tanggal').valueAsDate = new Date();
+    </script>
+</body>
+</html>

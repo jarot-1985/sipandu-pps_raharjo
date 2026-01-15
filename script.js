@@ -1,5 +1,19 @@
 let isSidebarOpen = true;
 
+// Supabase client (optional). If configured via window.SUPABASE_URL and window.SUPABASE_ANON_KEY,
+// we will use Supabase (DB + Storage) so it works fully online without hosting a custom backend.
+let supa = null;
+function initSupabaseClient() {
+    try {
+        if (window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+            supa = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            console.log('[SIPANDU] Supabase client initialized');
+        }
+    } catch (e) {
+        console.warn('[SIPANDU] Supabase not available:', e);
+    }
+}
+
 // Penyimpanan sementara (simulasi database) untuk halaman Mutasi PM.
 let mutasiDataList = [];
 
@@ -337,6 +351,7 @@ function initMutasiForm() {
     const filterStartEl = document.getElementById('mutasiFilterStart');
     const filterEndEl = document.getElementById('mutasiFilterEnd');
     let editingId = null;
+    const useDB = !!supa; // switch to online DB mode if Supabase configured
 
     if (!form || !tabInput || !tabHistory) return;
 
@@ -361,7 +376,7 @@ function initMutasiForm() {
         if (input) input.addEventListener('input', calculateMutasiAkhir);
     });
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(form);
         const data = Object.fromEntries(fd.entries());
@@ -370,8 +385,68 @@ function initMutasiForm() {
         data.pmKeluar = Number(data.pmKeluar) || 0;
         data.jumlahAkhir = (data.jumlahAwal + data.pmMasuk) - data.pmKeluar;
 
-        // Handle PDF (simulasi URL blob lokal)
         const pdfFile = fd.get('pdfFile');
+
+        if (useDB) {
+            try {
+                // Upload PDF ke Supabase Storage (opsional)
+                let pdfUrl = '';
+                let pdfName = '';
+                if (pdfFile && pdfFile.name) {
+                    if (pdfFile.type !== 'application/pdf') {
+                        alert('File harus berupa PDF');
+                        return;
+                    }
+                    if (pdfFile.size > 5 * 1024 * 1024) {
+                        alert('Ukuran PDF maksimal 5MB');
+                        return;
+                    }
+                    const bucket = window.SUPABASE_BUCKET || 'pdf';
+                    const safe = pdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                    const filePath = `mutasi_pm/${Date.now()}_${safe}`;
+                    const upRes = await supa.storage.from(bucket).upload(filePath, pdfFile, { contentType: 'application/pdf', upsert: true });
+                    if (upRes.error) throw upRes.error;
+                    const pub = supa.storage.from(bucket).getPublicUrl(filePath);
+                    pdfUrl = (pub && pub.data && pub.data.publicUrl) ? pub.data.publicUrl : '';
+                    pdfName = pdfFile.name;
+                }
+
+                const payload = {
+                    unitPelayanan: data.unitPelayanan || '',
+                    bulanTahun: data.bulanTahun || '',
+                    jumlahAwal: data.jumlahAwal,
+                    pmMasuk: data.pmMasuk,
+                    pmKeluar: data.pmKeluar,
+                    jumlahAkhir: data.jumlahAkhir,
+                    catatan: data.catatan || '',
+                    pdfUrl,
+                    pdfName,
+                    updatedAt: new Date().toISOString()
+                };
+
+                if (editingId) {
+                    const up = await supa.from('mutasi_pm').update(payload).eq('id', editingId).select().single();
+                    if (up.error) throw up.error;
+                    editingId = null;
+                } else {
+                    payload.createdAt = new Date().toISOString();
+                    const ins = await supa.from('mutasi_pm').insert([payload]).select().single();
+                    if (ins.error) throw ins.error;
+                }
+
+                form.reset();
+                calculateMutasiAkhir();
+                if (typeof fetchData === 'function') await fetchData();
+                switchTab('history');
+                return;
+            } catch (err) {
+                console.error('Supabase error:', err);
+                alert('Gagal menyimpan ke database online');
+                return;
+            }
+        }
+
+        // Fallback lokal (simulasi) jika Supabase belum dikonfigurasi
         if (pdfFile && pdfFile.name) {
             if (pdfFile.type !== 'application/pdf') {
                 alert('File harus berupa PDF');
@@ -428,6 +503,32 @@ function initMutasiForm() {
         }
 
         return searchOk && unitOk && periodOk;
+    }
+
+    // Fetch data from Supabase if configured
+    async function fetchData() {
+        if (!useDB) { renderTable(); return; }
+        try {
+            const q = (searchEl && searchEl.value) ? searchEl.value : '';
+            const unit = (filterEl && filterEl.value) ? filterEl.value : 'Semua';
+            const start = (filterStartEl && filterStartEl.value) ? filterStartEl.value : '';
+            const end = (filterEndEl && filterEndEl.value) ? filterEndEl.value : '';
+
+            let query = supa.from('mutasi_pm').select('*').order('updatedAt', { ascending: false });
+            if (unit && unit !== 'Semua') query = query.eq('unitPelayanan', unit);
+            if (start && end) query = query.gte('bulanTahun', start).lte('bulanTahun', end);
+            else if (start) query = query.eq('bulanTahun', start);
+            else if (end) query = query.eq('bulanTahun', end);
+            if (q) query = query.or(`unitPelayanan.ilike.%${q}%,bulanTahun.ilike.%${q}%`);
+
+            const { data, error } = await query;
+            if (error) throw error;
+            mutasiDataList = data || [];
+            renderTable();
+        } catch (err) {
+            console.error('Supabase fetch error:', err);
+            alert('Gagal mengambil data dari database online');
+        }
     }
 
     function renderTable() {
@@ -491,13 +592,19 @@ function initMutasiForm() {
 
         // Delegasi event untuk tombol aksi
         tableBody.querySelectorAll('button[data-action]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const id = btn.getAttribute('data-id');
                 const action = btn.getAttribute('data-action');
                 if (action === 'delete') {
                     if (confirm('Hapus data ini?')) {
-                        mutasiDataList = mutasiDataList.filter(x => x.id !== id);
-                        renderTable();
+                        if (useDB) {
+                            const del = await supa.from('mutasi_pm').delete().eq('id', id);
+                            if (del.error) { alert('Gagal menghapus data online'); return; }
+                            await fetchData();
+                        } else {
+                            mutasiDataList = mutasiDataList.filter(x => x.id !== id);
+                            renderTable();
+                        }
                     }
                 } else if (action === 'edit') {
                     const item = mutasiDataList.find(x => x.id === id);
@@ -517,13 +624,13 @@ function initMutasiForm() {
         initIcons();
     }
 
-    if (searchEl) searchEl.addEventListener('input', renderTable);
-    if (filterEl) filterEl.addEventListener('change', renderTable);
-    if (filterStartEl) filterStartEl.addEventListener('change', renderTable);
-    if (filterEndEl) filterEndEl.addEventListener('change', renderTable);
+    if (searchEl) searchEl.addEventListener('input', () => { useDB ? fetchData() : renderTable(); });
+    if (filterEl) filterEl.addEventListener('change', () => { useDB ? fetchData() : renderTable(); });
+    if (filterStartEl) filterStartEl.addEventListener('change', () => { useDB ? fetchData() : renderTable(); });
+    if (filterEndEl) filterEndEl.addEventListener('change', () => { useDB ? fetchData() : renderTable(); });
 
     calculateMutasiAkhir();
-    renderTable();
+    if (useDB) { fetchData(); } else { renderTable(); }
 }
 
 function calculateMutasiAkhir() {
@@ -536,6 +643,38 @@ function calculateMutasiAkhir() {
     const akhir = (awal + masuk) - keluar;
     const out = document.getElementById('mutasiJumlahAkhir');
     if (out) out.value = akhir;
+}
+
+// Render file form eksternal (F_*.html) ke dalam frame konten utama
+function loadFormInFrame(src, title) {
+    const pageTitleEl = document.getElementById('page-title-display');
+    if (pageTitleEl) pageTitleEl.innerText = (title || src || '').toUpperCase();
+    const container = document.getElementById('page-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="space-y-6">
+            <div class="flex items-center gap-3">
+                <i data-lucide="file-text" class="w-5 h-5 text-sky-600"></i>
+                <h3 class="text-xl font-black text-slate-800">${title || 'Form'}</h3>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <iframe src="${src}" class="w-full min-h-[72vh]" style="border:0;" loading="lazy"></iframe>
+            </div>
+        </div>
+    `;
+
+    if (window.innerWidth < 1024) {
+        // tutup sidebar di mobile agar fokus ke konten
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.add('collapsed');
+        mainContent.classList.remove('lg:ml-72');
+        overlay.classList.remove('active');
+        isSidebarOpen = false;
+    }
+    initIcons();
 }
 
 window.addEventListener('resize', () => {
@@ -552,6 +691,7 @@ window.addEventListener('resize', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    initSupabaseClient();
     initIcons();
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
@@ -559,6 +699,24 @@ document.addEventListener('DOMContentLoaded', () => {
         isSidebarOpen = false;
         document.getElementById('sidebar').classList.add('collapsed');
         document.getElementById('main-content').classList.remove('lg:ml-72');
+    }
+
+    // Intersep klik tautan form di sidebar agar tampil di frame
+    const nav = document.querySelector('nav');
+    if (nav) {
+        nav.addEventListener('click', (e) => {
+            const a = e.target.closest('a[href]');
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href) return;
+            // Cegah pindah halaman untuk file form lokal
+            const isLocalForm = href.startsWith('F_') || href === 'form_mutasi_static.html';
+            if (isLocalForm) {
+                e.preventDefault();
+                const title = (a.textContent || href).trim();
+                loadFormInFrame(href, title);
+            }
+        });
     }
 
     // Tampilkan Dashboard secara otomatis saat load awal

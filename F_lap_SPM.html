@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPM - Standar Pelayanan Minimal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .print-only { display: block !important; }
+            body { background: white; }
+        }
+        .print-only { display: none; }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        /* Pengaturan tabel yang lebih stabil */
+        table { table-layout: fixed; width: 100%; border-spacing: 0; }
+        th, td { word-wrap: break-word; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-900 text-xs">
+
+    <!-- Kontainer Header & Form (80% Layar) -->
+    <div class="max-w-[80%] mx-auto py-6 px-4 no-print">
+        <!-- Header -->
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-3 gap-2">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Standar Pelayanan Minimal (SPM)</h1>
+                <p class="text-slate-500 text-[11px]">Pusat Pelaporan SPM Panti dan Rumah Pelayanan Sosial</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.reload()" class="flex items-center gap-1.5 px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 transition shadow-sm font-bold text-[10px]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Menu Utama
+                </button>
+                
+                <div id="authStatus" class="text-[10px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded border border-slate-200">
+                    Menghubungkan Database...
+                </div>
+                <div id="currentTime" class="text-[11px] font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200 text-slate-600"></div>
+            </div>
+        </header>
+
+        <!-- Form Section -->
+        <div class="mb-12">
+            <form id="spmForm" class="bg-white shadow-xl rounded-2xl overflow-hidden border border-slate-200">
+                <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+                    <h2 class="text-base font-semibold flex items-center gap-3">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span id="formTitle">Formulir Input Laporan Baru</span>
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Cloud Sync</span>
+                        <div id="cloudIcon" class="text-blue-400">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H5.5z" /></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <input type="hidden" id="editDocId" value="">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Kolom 1: Unit -->
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Unit Kerja Satuan Pelayanan</label>
+                            <select id="unitKerja" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-xs font-medium">
+                                <option value="">Pilih Unit Kerja</option>
+                                <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
+                                <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
+                                <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
+                                <option value="RPS PMKS Gondang Sragen">RPS PMKS Gondang Sragen</option>
+                            </select>
+                        </div>
+
+                        <!-- Kolom 2: Tahun & Periode -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Tahun</label>
+                                <select id="tahunData" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-xs font-medium"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Periode</label>
+                                <select id="periode" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-xs font-medium">
+                                    <option value="">Pilih...</option>
+                                    <option value="TW I">TW I</option>
+                                    <option value="TW II">TW II</option>
+                                    <option value="TW III">TW III</option>
+                                    <option value="TW IV">TW IV</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Kolom 3: File Uploads -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Upload Rekapitulasi Excel</label>
+                                <input type="file" id="fileExcel" accept=".xlsx, .xls" class="hidden" onchange="handleFileSelect(this, 'excelLabel')">
+                                <button type="button" onclick="document.getElementById('fileExcel').click()" class="w-full flex items-center justify-between px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 hover:bg-white hover:border-blue-400 transition text-left group">
+                                    <span id="excelLabel" class="text-[10px] text-slate-500 truncate italic">Pilih file .xlsx</span>
+                                    <svg class="h-4 w-4 text-slate-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                </button>
+                                <input type="hidden" id="storedExcelName">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Upload Data Dukung PDF</label>
+                                <input type="file" id="filePdf" accept=".pdf" class="hidden" onchange="handleFileSelect(this, 'pdfLabel')">
+                                <button type="button" onclick="document.getElementById('filePdf').click()" class="w-full flex items-center justify-between px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 hover:bg-white hover:border-red-400 transition text-left group">
+                                    <span id="pdfLabel" class="text-[10px] text-slate-500 truncate italic">Pilih file .pdf</span>
+                                    <svg class="h-4 w-4 text-slate-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                </button>
+                                <input type="hidden" id="storedPdfName">
+                            </div>
+                        </div>
+
+                        <!-- Kolom 4: Keterangan & Action -->
+                        <div class="flex flex-col gap-3">
+                            <div class="flex-1">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Catatan Tambahan</label>
+                                <input type="text" id="keterangan" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-xs" placeholder="Ketik keterangan di sini...">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" id="btnSubmit" onclick="saveToCloud()" class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-500/20 font-bold transition text-xs disabled:opacity-50 flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                                    <span id="btnText">Simpan ke Cloud</span>
+                                </button>
+                                <button type="button" onclick="resetForm()" id="btnCancel" class="hidden px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-[10px] font-bold border border-slate-200">Batal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- List Section: Di luar kontainer 80% agar melebar 100% layar -->
+    <div class="w-full px-4 mb-12 no-print">
+        <div class="bg-white shadow-xl rounded-2xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-600 rounded-lg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                    </div>
+                    <h2 class="font-black text-slate-700 uppercase tracking-widest text-[12px]">Database Laporan SPM Terdaftar (Tampilan Full)</h2>
+                    <div id="syncIndicator" class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse hidden"></div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Total Entri:</span>
+                    <span id="dataCount" class="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm shadow-blue-500/20">0</span>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-500 text-[10px] uppercase font-black border-b border-slate-200">
+                            <th class="px-6 py-4 w-[140px]">Tanggal Input</th>
+                            <th class="px-6 py-4 w-[250px]">Unit Kerja</th>
+                            <th class="px-6 py-4 w-[70px] text-center">Thn</th>
+                            <th class="px-6 py-4 w-[90px] text-center">Periode</th>
+                            <th class="px-6 py-4 w-[20%]">Berkas Rekapitulasi</th>
+                            <th class="px-6 py-4 w-[20%]">Data Dukung PDF</th>
+                            <th class="px-6 py-4 w-[15%]">Catatan/Keterangan</th>
+                            <th class="px-6 py-4 w-[100px] text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable" class="divide-y divide-slate-100"></tbody>
+                </table>
+                <div id="emptyState" class="p-20 text-center text-slate-400">
+                    <div class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-slate-200">
+                        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    </div>
+                    <p class="text-[12px] font-medium" id="loadingStatus">Menghubungkan Database...</p>
+                    <p class="text-[10px] mt-1">Pastikan koneksi internet Anda stabil</p>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+            <p>Sinkronisasi otomatis diaktifkan • Data terenkripsi SSL</p>
+            <p>© 2026 Sistem Pelaporan SPM Digital</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-12 opacity-0 transition-all duration-500 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl z-50 text-[11px] font-bold flex items-center gap-3 border border-white/10">
+        <div id="toastIcon" class="w-2 h-2 rounded-full bg-blue-400"></div>
+        <span id="toastMsg"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'spm-manager';
+
+        let currentUser = null;
+        let database = [];
+        let unsubscribeData = null;
+
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+                showToast("Gagal Otentikasi", "bg-red-600");
+                document.getElementById('loadingStatus').innerText = "Akses Database Terbatas";
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('authStatus');
+            if (user) {
+                statusEl.innerHTML = `<span class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Database Online</span>`;
+                statusEl.className = "text-[10px] font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded border border-green-200 shadow-sm";
+                startDataListener();
+            } else {
+                statusEl.innerText = "Sesi Berakhir";
+                statusEl.className = "text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded border border-slate-200";
+                if (unsubscribeData) unsubscribeData();
+            }
+        });
+
+        const startDataListener = () => {
+            if (!currentUser) return;
+            const dataColl = collection(db, 'artifacts', appId, 'public', 'data', 'lap_SPM');
+            if (unsubscribeData) unsubscribeData();
+
+            unsubscribeData = onSnapshot(dataColl, 
+                (snapshot) => {
+                    database = [];
+                    snapshot.forEach(doc => { 
+                        database.push({ id: doc.id, ...doc.data() }); 
+                    });
+                    database.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    renderTable();
+                    document.getElementById('syncIndicator').classList.remove('hidden');
+                    setTimeout(() => document.getElementById('syncIndicator').classList.add('hidden'), 1000);
+                }, 
+                (error) => {
+                    showToast("Error Sinkronisasi", "bg-red-600");
+                    document.getElementById('loadingStatus').innerText = "Gagal memuat tabel";
+                }
+            );
+        };
+
+        window.handleFileSelect = (input, labelId) => {
+            const label = document.getElementById(labelId);
+            if (input.files.length > 0) {
+                const name = input.files[0].name;
+                label.innerText = name;
+                label.classList.add('text-slate-900', 'not-italic', 'font-bold');
+                if (labelId === 'excelLabel') document.getElementById('storedExcelName').value = name;
+                if (labelId === 'pdfLabel') document.getElementById('storedPdfName').value = name;
+            }
+        };
+
+        window.downloadFile = (fileName, type) => {
+            if (!fileName) return;
+            showToast(`Mengunduh ${fileName}...`);
+            const content = `Mock File Content for ${fileName}\nFormat: ${type}\nVerified by SPM Cloud`;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        };
+
+        window.saveToCloud = async () => {
+            if (!currentUser) return;
+
+            const unit = document.getElementById('unitKerja').value;
+            const tahun = document.getElementById('tahunData').value;
+            const periode = document.getElementById('periode').value;
+            const excel = document.getElementById('storedExcelName').value;
+            const pdf = document.getElementById('storedPdfName').value;
+            const ket = document.getElementById('keterangan').value;
+            const editId = document.getElementById('editDocId').value;
+
+            if (!unit || !tahun || !periode || !excel || !pdf) {
+                return showToast("Lengkapi semua isian!", "bg-orange-500");
+            }
+
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            document.getElementById('btnText').innerText = "Memproses...";
+
+            try {
+                const now = new Date();
+                const payload = {
+                    unit, tahun, periode, excel, pdf, ket,
+                    createdAt: editId ? database.find(d => d.id === editId).createdAt : now.toISOString()
+                };
+
+                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'lap_SPM');
+                if (editId) {
+                    await setDoc(doc(collRef, editId), payload);
+                    showToast("Laporan berhasil diperbarui");
+                } else {
+                    await addDoc(collRef, payload);
+                    showToast("Laporan berhasil terunggah");
+                }
+                resetForm();
+            } catch (err) {
+                showToast("Gagal menyimpan ke server", "bg-red-600");
+            } finally {
+                btn.disabled = false;
+                document.getElementById('btnText').innerText = "Simpan ke Cloud";
+            }
+        };
+
+        window.editData = (id) => {
+            const item = database.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editDocId').value = id;
+            document.getElementById('unitKerja').value = item.unit;
+            document.getElementById('tahunData').value = item.tahun;
+            document.getElementById('periode').value = item.periode;
+            document.getElementById('excelLabel').innerText = item.excel;
+            document.getElementById('storedExcelName').value = item.excel;
+            document.getElementById('pdfLabel').innerText = item.pdf;
+            document.getElementById('storedPdfName').value = item.pdf;
+            document.getElementById('keterangan').value = item.ket || '';
+            document.getElementById('formTitle').innerText = "Edit Laporan Terdaftar";
+            document.getElementById('btnCancel').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.deleteData = async (id) => {
+            if (confirm("Hapus entri laporan ini secara permanen dari server?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lap_SPM', id));
+                    showToast("Data berhasil dihapus", "bg-slate-700");
+                } catch (e) { showToast("Gagal menghapus", "bg-red-600"); }
+            }
+        };
+
+        window.resetForm = () => {
+            document.getElementById('spmForm').reset();
+            document.getElementById('editDocId').value = "";
+            document.getElementById('excelLabel').innerText = "Pilih file .xlsx";
+            document.getElementById('pdfLabel').innerText = "Pilih file .pdf";
+            document.getElementById('storedExcelName').value = "";
+            document.getElementById('storedPdfName').value = "";
+            document.getElementById('formTitle').innerText = "Formulir Input Laporan Baru";
+            document.getElementById('btnCancel').classList.add('hidden');
+        };
+
+        const renderTable = () => {
+            const tbody = document.getElementById('dataTable');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+            document.getElementById('dataCount').innerText = database.length;
+            
+            if (database.length === 0) {
+                emptyState.classList.remove('hidden');
+                document.getElementById('loadingStatus').innerText = "Database Kosong";
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            database.forEach((item) => {
+                const dateObj = new Date(item.createdAt);
+                const displayDate = dateObj.toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                });
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/30 transition text-[11px] group";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-slate-500 font-bold whitespace-nowrap italic">${displayDate}</td>
+                    <td class="px-6 py-4 font-black text-slate-700 truncate" title="${item.unit}">${item.unit}</td>
+                    <td class="px-6 py-4 text-center font-black text-slate-400">${item.tahun}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-sm">${item.periode}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="downloadFile('${item.excel}', 'Excel')" class="flex items-center text-emerald-600 hover:text-emerald-800 transition truncate w-full group/btn font-bold">
+                            <svg class="h-4 w-4 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 012-2h4.586A1 1 0 0111 2.414l4.293 4.293V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/></svg>
+                            <span class="truncate underline decoration-2 decoration-emerald-200 group-hover/btn:decoration-emerald-500" title="${item.excel}">${item.excel}</span>
+                        </button>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="downloadFile('${item.pdf}', 'PDF')" class="flex items-center text-rose-600 hover:text-rose-800 transition truncate w-full group/btn font-bold">
+                            <svg class="h-4 w-4 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.586 5L14 2.414A2 2 0 0012.586 2H9z"/></svg>
+                            <span class="truncate underline decoration-2 decoration-rose-200 group-hover/btn:decoration-rose-500" title="${item.pdf}">${item.pdf}</span>
+                        </button>
+                    </td>
+                    <td class="px-6 py-4 text-slate-500 italic truncate max-w-[200px]" title="${item.ket || '-'}">${item.ket || '-'}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="editData('${item.id}')" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition border border-transparent hover:border-blue-200" title="Edit">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                            <button onclick="deleteData('${item.id}')" class="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition border border-transparent hover:border-rose-200" title="Hapus">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const updateTime = () => {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        };
+
+        const populateYears = () => {
+            const yearSelect = document.getElementById('tahunData');
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear + 1; i >= currentYear - 2; i--) {
+                const option = document.createElement('option');
+                option.value = i; option.text = i;
+                if (i === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+        };
+
+        function showToast(msg, colorClass = "bg-slate-900") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.className = `fixed bottom-6 right-6 transform opacity-100 translate-y-0 transition-all duration-500 ${colorClass} text-white px-6 py-3 rounded-xl shadow-2xl z-50 text-[11px] font-bold flex items-center gap-3 border border-white/10`;
+            setTimeout(() => {
+                toast.classList.add('translate-y-12', 'opacity-0');
+            }, 3000);
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
+        populateYears();
+        initAuth();
+    </script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-PEKPP - Evaluasi Pelayanan Publik (Cloud)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .print-only { display: block !important; }
+            body { background: white; }
+        }
+        .print-only { display: none; }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        table { table-layout: fixed; width: 100%; border-spacing: 0; }
+        th, td { word-wrap: break-word; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-900 text-xs">
+
+    <div class="max-w-[1600px] mx-auto py-4 px-4 no-print">
+        <!-- Header -->
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-3 gap-2">
+            <div>
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 p-1 rounded">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                    </div>
+                    <h1 class="text-xl font-bold text-blue-900 tracking-tight">E-PEKPP</h1>
+                </div>
+                <p class="text-slate-500 text-[10px]">Sinkronisasi Real-time Aktif</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div id="connectionStatus" class="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    Menghubungkan...
+                </div>
+                <div id="currentTime" class="text-[10px] font-medium bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-slate-600"></div>
+            </div>
+        </header>
+
+        <!-- Form Section (80% Width) -->
+        <div class="w-full lg:w-4/5 mx-auto mb-8">
+            <form id="skmForm" onsubmit="event.preventDefault();" class="bg-white shadow-lg rounded-xl overflow-hidden border border-slate-200">
+                <div class="p-4 bg-blue-900 text-white flex justify-between items-center">
+                    <h2 class="text-sm font-semibold" id="formTitle">Input Data E-PEKPP</h2>
+                    <span class="text-blue-400">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-3.5H8l4-5 4 5h-3v3.5h-2z"/></svg>
+                    </span>
+                </div>
+                
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <input type="hidden" id="editId" value="">
+                    
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unit Pelayanan</label>
+                        <select id="unitKerja" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-xs">
+                            <option value="">Pilih Unit...</option>
+                            <option value="PPSDI Raharjo Sragen">PPSDI Raharjo Sragen</option>
+                            <option value="RPSLU Mojomulyo Sragen">RPSLU Mojomulyo Sragen</option>
+                            <option value="RPSA Pamardi Siwi Sragen">RPSA Pamardi Siwi Sragen</option>
+                            <option value="RPS PMKS Gondang Sragen">RPS PMKS Gondang Sragen</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Masa Berlaku Penilaian</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="tglMulai" required class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-[11px]">
+                            <input type="date" id="tglAkhir" required class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-[11px]">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase">Indeks / Skor</label>
+                            <span id="labelPredikat" class="text-[9px] font-black uppercase text-blue-600"></span>
+                        </div>
+                        <input type="number" id="skorIkm" oninput="updateLiveVisual(this.value)" step="0.01" min="1" max="4" placeholder="Contoh: 3.50" required class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <div class="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div id="predikatBar" class="h-full w-0 transition-all duration-500 bg-slate-300"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nilai Konversi</label>
+                        <input type="text" id="fieldPredikat" placeholder="A / B / C" required class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bukti Laporan (PDF)</label>
+                        <input type="file" id="fileUtama" accept="application/pdf" class="hidden" onchange="processFile(this)">
+                        <button type="button" onclick="document.getElementById('fileUtama').click()" class="w-full flex items-center justify-between px-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-left">
+                            <span id="fileLabel" class="text-[10px] text-slate-500 truncate italic">Pilih file PDF...</span>
+                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                        <input type="hidden" id="storedFileBase64">
+                        <input type="hidden" id="storedFileName">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Tambahan</label>
+                        <input type="text" id="keterangan" placeholder="Keterangan singkat..." class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                    </div>
+
+                    <div class="lg:col-span-3 flex justify-end items-center gap-3 mt-2 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="resetForm()" id="btnCancel" class="hidden px-6 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-[11px] font-bold transition">
+                            Batalkan Edit
+                        </button>
+                        <button type="button" id="btnSave" onclick="saveData()" class="px-10 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg font-bold text-xs disabled:opacity-50 transition-all" disabled>
+                            Simpan Data ke Cloud
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- List Section (100% Width) -->
+        <div class="w-full">
+            <div class="bg-white shadow-lg rounded-xl border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h2 class="font-bold text-slate-700 uppercase tracking-tight text-[11px]">Database E-PEKPP (Real-time Cloud)</h2>
+                    <span id="dataCount" class="bg-blue-100 text-blue-700 text-[9px] font-black px-2 py-0.5 rounded">... DATA</span>
+                </div>
+                
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/80 text-slate-600 text-[9px] uppercase font-black border-b border-slate-200">
+                                <th class="px-4 py-4 w-[120px]">Tgl Input</th>
+                                <th class="px-4 py-4 w-[220px]">Unit Pelayanan</th>
+                                <th class="px-4 py-4 w-[150px] text-center">Periode Berlaku</th>
+                                <th class="px-4 py-4 w-[80px] text-center">Skor</th>
+                                <th class="px-4 py-4 w-[110px] text-center">Konversi</th>
+                                <th class="px-4 py-4 w-[180px]">Berkas PDF</th>
+                                <th class="px-4 py-4 w-[250px]">Catatan</th>
+                                <th class="px-4 py-4 w-[100px] text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable" class="divide-y divide-slate-100">
+                            <tr><td colspan="8" class="p-8 text-center text-slate-400">Menghubungkan ke database...</td></tr>
+                        </tbody>
+                    </table>
+                    <div id="emptyState" class="hidden p-16 text-center text-slate-400">
+                        <p class="text-[12px] font-medium">Belum ada data tersedia di cloud database.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-4 right-4 transform translate-y-10 opacity-0 transition-all duration-300 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-xl z-50 text-[11px] font-medium">
+        <span id="toastMsg"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let currentUser = null;
+        let localDatabase = [];
+
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                showToast("Gagal terhubung ke Cloud", "bg-red-600");
+            }
+        };
+
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('connectionStatus').innerHTML = `
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Terhubung Cloud
+                `;
+                document.getElementById('connectionStatus').className = "text-[9px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 flex items-center gap-1";
+                document.getElementById('btnSave').disabled = false;
+                setupRealtimeListener();
+            }
+        });
+
+        function setupRealtimeListener() {
+            if (!currentUser) return;
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'evaluasi');
+            onSnapshot(colRef, (snapshot) => {
+                localDatabase = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                localDatabase.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                renderTable();
+            }, (error) => {
+                showToast("Error sinkronisasi data", "bg-red-600");
+            });
+        }
+
+        window.saveData = async () => {
+            if (!currentUser) return showToast("Sesi tidak valid", "bg-red-600");
+
+            const unit = document.getElementById('unitKerja').value;
+            const tglMulai = document.getElementById('tglMulai').value;
+            const tglAkhir = document.getElementById('tglAkhir').value;
+            const skorRaw = parseFloat(document.getElementById('skorIkm').value);
+            const predikat = document.getElementById('fieldPredikat').value;
+            const editId = document.getElementById('editId').value;
+            const pdf = document.getElementById('storedFileBase64').value;
+            const pdfName = document.getElementById('storedFileName').value;
+            const ket = document.getElementById('keterangan').value;
+
+            if (!unit || !tglMulai || !tglAkhir || isNaN(skorRaw) || !predikat) {
+                return showToast("Mohon lengkapi form!", "bg-red-500");
+            }
+
+            const btnSave = document.getElementById('btnSave');
+            btnSave.disabled = true;
+            btnSave.innerText = "Mengunggah...";
+
+            const id = editId || Date.now().toString();
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'evaluasi', id);
+
+            try {
+                await setDoc(docRef, {
+                    unit, tglMulai, tglAkhir, skorRaw, predikat, pdf, pdfName, ket,
+                    updatedAt: serverTimestamp(),
+                    createdAt: editId ? localDatabase.find(i => i.id === editId).createdAt : serverTimestamp(),
+                    userId: currentUser.uid
+                }, { merge: true });
+
+                showToast(editId ? "Data diperbarui" : "Data disimpan ke cloud");
+                resetForm();
+            } catch (err) {
+                showToast("Gagal simpan ke cloud", "bg-red-600");
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = "Simpan Data ke Cloud";
+            }
+        };
+
+        window.deleteData = async (id) => {
+            if (!confirm("Hapus data dari cloud permanen?")) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'evaluasi', id);
+                await deleteDoc(docRef);
+                showToast("Data telah dihapus");
+            } catch (err) {
+                showToast("Gagal menghapus data", "bg-red-600");
+            }
+        };
+
+        const renderTable = () => {
+            const tbody = document.getElementById('dataTable');
+            tbody.innerHTML = '';
+            document.getElementById('dataCount').innerText = `${localDatabase.length} DATA`;
+            
+            if (localDatabase.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('emptyState').classList.add('hidden');
+
+            localDatabase.forEach((item) => {
+                const tglDisplay = item.createdAt?.seconds 
+                    ? new Date(item.createdAt.seconds * 1000).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : 'Sync...';
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-slate-500 font-medium">${tglDisplay}</td>
+                    <td class="px-4 py-4 font-bold text-slate-800 truncate" title="${item.unit}">${item.unit}</td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="text-[9px] font-bold text-slate-500 uppercase">${item.tglMulai} <br>s/d<br> ${item.tglAkhir}</div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="font-black text-slate-700 text-sm">${Number(item.skorRaw).toFixed(2)}</div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <span class="inline-block px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                            ${item.predikat}
+                        </span>
+                    </td>
+                    <td class="px-4 py-4">
+                        ${item.pdf ? `
+                            <div class="flex items-center gap-2 text-blue-600 font-bold truncate">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 012-2h4.586A1 1 0 0111 2.414l4.293 4.293V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/></svg>
+                                <span class="truncate text-[10px]">${item.pdfName}</span>
+                            </div>
+                        ` : '<span class="text-slate-300 italic text-[9px]">Tidak ada berkas</span>'}
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="text-[10px] text-slate-600 line-clamp-2 italic" title="${item.ket || '-'}">
+                            ${item.ket || '-'}
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="flex gap-2 justify-center">
+                            <button onclick="editData('${item.id}')" title="Edit" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg border border-blue-200 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            </button>
+                            <button onclick="deleteData('${item.id}')" title="Hapus" class="p-2 text-red-500 hover:bg-red-100 rounded-lg border border-red-200 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.editData = (id) => {
+            const item = localDatabase.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('editId').value = id;
+            document.getElementById('unitKerja').value = item.unit;
+            document.getElementById('tglMulai').value = item.tglMulai;
+            document.getElementById('tglAkhir').value = item.tglAkhir;
+            document.getElementById('skorIkm').value = item.skorRaw;
+            document.getElementById('fieldPredikat').value = item.predikat;
+            updateLiveVisual(item.skorRaw);
+            document.getElementById('storedFileBase64').value = item.pdf || "";
+            document.getElementById('storedFileName').value = item.pdfName || "";
+            document.getElementById('fileLabel').innerText = item.pdfName || "Pilih file PDF...";
+            document.getElementById('keterangan').value = item.ket || "";
+            document.getElementById('formTitle').innerText = "Edit Data Evaluasi";
+            document.getElementById('btnCancel').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.resetForm = () => {
+            document.getElementById('skmForm').reset();
+            document.getElementById('editId').value = "";
+            document.getElementById('fileLabel').innerText = "Pilih file PDF...";
+            document.getElementById('storedFileBase64').value = "";
+            document.getElementById('storedFileName').value = "";
+            updateLiveVisual("");
+            document.getElementById('formTitle').innerText = "Input Data E-PEKPP";
+            document.getElementById('btnCancel').classList.add('hidden');
+        };
+
+        window.updateLiveVisual = (val) => {
+            const score = parseFloat(val);
+            const label = document.getElementById('labelPredikat');
+            const bar = document.getElementById('predikatBar');
+            if (isNaN(score) || score < 1 || score > 4) {
+                label.innerText = ""; bar.style.width = "0%"; return;
+            }
+            const visual = (s) => {
+                if (s >= 3.51) return { label: 'Sangat Baik', bg: 'bg-green-600' };
+                if (s >= 3.01) return { label: 'Baik', bg: 'bg-blue-600' };
+                if (s >= 2.51) return { label: 'Cukup', bg: 'bg-yellow-500' };
+                if (s >= 2.01) return { label: 'Kurang', bg: 'bg-orange-500' };
+                return { label: 'Rendah', bg: 'bg-red-600' };
+            };
+            const v = visual(score);
+            label.innerText = `: ${v.label}`;
+            bar.style.width = `${(score / 4) * 100}%`;
+            bar.className = `h-full transition-all duration-500 ${v.bg}`;
+        };
+
+        window.processFile = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+            if (file.size > 1 * 1024 * 1024) { 
+                showToast("File Maks 1MB", "bg-red-600");
+                input.value = ""; return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('storedFileBase64').value = e.target.result;
+                document.getElementById('storedFileName').value = file.name;
+                document.getElementById('fileLabel').innerText = file.name;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function showToast(msg, color = "bg-slate-800") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.className = `fixed bottom-4 right-4 transform opacity-100 translate-y-0 transition-all duration-300 ${color} text-white px-4 py-2 rounded-lg z-50 text-[11px]`;
+            setTimeout(() => toast.classList.add('translate-y-10', 'opacity-0'), 3000);
+        }
+
+        setInterval(() => {
+            document.getElementById('currentTime').innerText = new Date().toLocaleString('id-ID', { 
+                day: '2-digit', month: 'short', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
