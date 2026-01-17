@@ -244,6 +244,8 @@
         rawConfig = __firebase_config;
       } else if (window.__firebase_config) {
         rawConfig = window.__firebase_config;
+      } else if (window.parent && window.parent.__firebase_config) {
+        rawConfig = window.parent.__firebase_config;
       }
       if (!rawConfig) {
         useCloud = false;
@@ -258,6 +260,10 @@
           appId = __app_id;
         } else if (window.__app_id) {
           appId = window.__app_id;
+        } else if (window.parent && window.parent.__app_id) {
+          appId = window.parent.__app_id;
+        } else {
+          appId = "sipandu-app";
         }
       }
     } catch (err) {
