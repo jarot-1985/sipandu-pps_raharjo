@@ -48,16 +48,6 @@
         <form id="pengumuman-form" class="p-10 space-y-8">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="space-y-2">
-              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">No. Informasi</label>
-              <input 
-                id="field-no"
-                type="text" 
-                required
-                placeholder="Contoh: 001/PPSDI/2026"
-                class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm"
-              />
-            </div>
-            <div class="space-y-2">
               <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal Publikasi</label>
               <div class="relative">
                 <input 
@@ -163,7 +153,7 @@
           <input 
             id="search-input"
             type="text" 
-            placeholder="Cari berdasarkan judul, nomor, atau isi konten..."
+            placeholder="Cari berdasarkan judul atau isi konten..."
             class="w-full bg-slate-50 border-none rounded-2xl pl-4 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-sm text-slate-700"
           />
         </div>
@@ -228,14 +218,13 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { initializeFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
     let app = null;
     let auth = null;
     let db = null;
     let appId = "info-portal-system";
-    let useCloud = true;
     let storage = null;
 
     try {
@@ -248,13 +237,12 @@
         rawConfig = window.parent.__firebase_config;
       }
       if (!rawConfig) {
-        useCloud = false;
-        console.warn("Firebase config not found, running in local mode");
+        throw new Error("Firebase config not found");
       } else {
         const parsedConfig = typeof rawConfig === "string" ? JSON.parse(rawConfig) : rawConfig;
         app = initializeApp(parsedConfig);
         auth = getAuth(app);
-        db = initializeFirestore(app, { databaseId: "sipandu" });
+        db = getFirestore(app);
         storage = getStorage(app);
         if (typeof __app_id !== "undefined" && __app_id) {
           appId = __app_id;
@@ -268,7 +256,6 @@
       }
     } catch (err) {
       console.error("Firebase init error:", err);
-      useCloud = false;
     }
 
     let currentUser = null;
@@ -286,7 +273,6 @@
     const formSection = document.getElementById("form-section");
     const formTitle = document.getElementById("form-title");
     const formEl = document.getElementById("pengumuman-form");
-    const fieldNo = document.getElementById("field-no");
     const fieldTanggal = document.getElementById("field-tanggal");
     const fieldJudul = document.getElementById("field-judul");
     const fieldKonten = document.getElementById("field-konten");
@@ -339,11 +325,6 @@
     }
 
     async function initAuth() {
-      if (!useCloud || !auth) {
-        currentUser = { local: true };
-        loadLocalData();
-        return;
-      }
       try {
         if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
@@ -356,10 +337,6 @@
     }
 
     function startListener() {
-      if (!useCloud || !db) {
-        loadLocalData();
-        return;
-      }
       const colRef = collection(db, "artifacts", appId, "public", "data", "portal_informasi");
       onSnapshot(
         colRef,
@@ -435,9 +412,9 @@
       const now = Date.now();
       const existing = editId ? dataInformasi.find(i => i.id === editId) : null;
 
-      // Upload ke Firebase Storage jika di mode cloud dan ada file baru
+      // Upload ke Firebase Storage jika ada file baru
       try {
-        if (useCloud && currentUser && db && storage && currentPdfFile) {
+        if (currentUser && db && storage && currentPdfFile) {
           const safeName = currentPdfFile.name.replace(/\s+/g, "_");
           const path = `artifacts/${appId}/public/files/portal_informasi/${now}_${safeName}`;
           const ref = storageRef(storage, path);
@@ -453,7 +430,6 @@
       }
 
       const payload = {
-        no: fieldNo.value.trim(),
         tanggalPublikasi: fieldTanggal.value,
         judul: fieldJudul.value.trim(),
         konten: fieldKonten.value.trim(),
@@ -467,7 +443,7 @@
       };
 
       try {
-        if (useCloud && currentUser && db) {
+        if (currentUser && db) {
           if (editId) {
             const ref = doc(db, "artifacts", appId, "public", "data", "portal_informasi", editId);
             await updateDoc(ref, payload);
@@ -477,18 +453,8 @@
             payload.id = added.id;
           }
         } else {
-          if (editId) {
-            const idx = dataInformasi.findIndex(i => i.id === editId);
-            if (idx !== -1) {
-              dataInformasi[idx] = { ...dataInformasi[idx], ...payload };
-            }
-          } else {
-            payload.id = Date.now().toString();
-            dataInformasi.unshift(payload);
-          }
-          saveLocalData();
-          renderTable();
-          showNotif("Informasi disimpan (mode lokal)");
+          showNotif("Gagal menyimpan: belum terautentikasi", "error");
+          return;
         }
         resetForm();
         switchTab("list");
@@ -503,7 +469,6 @@
       if (!item) return;
       editId = id;
       formTitle.textContent = "Perbarui Informasi";
-      fieldNo.value = item.no || "";
       fieldTanggal.value = item.tanggalPublikasi || "";
       fieldJudul.value = item.judul || "";
       fieldKonten.value = item.konten || "";
@@ -532,13 +497,9 @@
       const confirmDelete = window.confirm("Hapus data ini secara permanen dari server cloud?");
       if (!confirmDelete) return;
       try {
-        if (useCloud && currentUser && db) {
+        if (currentUser && db) {
           const ref = doc(db, "artifacts", appId, "public", "data", "portal_informasi", id);
           await deleteDoc(ref);
-        } else {
-          dataInformasi = dataInformasi.filter(i => i.id !== id);
-          saveLocalData();
-          renderTable();
         }
         if (editId === id) resetForm();
         showNotif("Data Berhasil Dihapus");
@@ -570,9 +531,8 @@
       const term = (searchInput.value || "").toLowerCase();
       const filtered = dataInformasi.filter(item => {
         const j = (item.judul || "").toLowerCase();
-        const n = (item.no || "").toLowerCase();
         const k = (item.konten || "").toLowerCase();
-        return j.includes(term) || n.includes(term) || k.includes(term);
+        return j.includes(term) || k.includes(term);
       });
 
       statTotal.textContent = dataInformasi.length.toString();
@@ -596,7 +556,6 @@
         const tdInfo = document.createElement("td");
         tdInfo.className = "px-6 py-6 max-w-xs";
         tdInfo.innerHTML =
-          '<p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">' + (item.no || "") + "</p>" +
           '<h4 class="text-sm font-black text-slate-800 uppercase">' + (item.judul || "") + "</h4>" +
           '<div class="flex items-center gap-1.5 mt-2 text-slate-400">' +
           '<span class="text-[10px] font-bold uppercase tracking-wide">' + (item.tanggalPublikasi || "") + "</span>" +
@@ -688,30 +647,7 @@
       });
     }
 
-    function loadLocalData() {
-      try {
-        const raw = localStorage.getItem("sipandu_portal_informasi");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            dataInformasi = parsed.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-          }
-        }
-        
-
-      } catch (err) {
-        console.error("Local load error:", err);
-      }
-      renderTable();
-    }
-
-    function saveLocalData() {
-      try {
-        localStorage.setItem("sipandu_portal_informasi", JSON.stringify(dataInformasi));
-      } catch (err) {
-        console.error("Local save error:", err);
-      }
-    }
+ 
 
     tabListBtn.addEventListener("click", () => switchTab("list"));
     tabFormBtn.addEventListener("click", () => {
@@ -727,14 +663,12 @@
     searchInput.addEventListener("input", renderTable);
 
     initAuth();
-    if (useCloud && auth) {
-      onAuthStateChanged(auth, user => {
-        currentUser = user;
-        if (user) {
-          startListener();
-        }
-      });
-    }
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (user) {
+        startListener();
+      }
+    });
 
     switchTab("list");
   </script>
@@ -744,15 +678,6 @@
             
             <form onSubmit={handleSubmit} className="p-10 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">No. Informasi</label>
-                  <input 
-                    type="text" required value={form.no}
-                    onChange={e => setForm({...form, no: e.target.value})}
-                    placeholder="Contoh: 001/PPSDI/2026"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm"
-                  />
-                </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal Publikasi</label>
                   <div className="relative">
@@ -844,7 +769,7 @@
                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input 
                   type="text" 
-                  placeholder="Cari berdasarkan judul, nomor, atau isi konten..."
+                  placeholder="Cari berdasarkan judul atau isi konten..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-2xl pl-14 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-sm text-slate-700"
@@ -893,7 +818,6 @@
                           <span className="text-xs font-black text-slate-300 group-hover:text-indigo-600 transition-colors">{String(idx + 1).padStart(2, '0')}</span>
                         </td>
                         <td className="px-6 py-6 max-w-xs">
-                          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">{item.no}</p>
                           <h4 className="text-sm font-black text-slate-800 line-clamp-1 uppercase group-hover:text-indigo-700 transition-colors">{item.judul}</h4>
                           <div className="flex items-center gap-1.5 mt-2 text-slate-400">
                             <Calendar size={12} />

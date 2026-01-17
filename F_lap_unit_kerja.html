@@ -37,6 +37,20 @@
     </style>
 </head>
 <body class="p-4 md:p-8">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+const raw = window.__firebase_config || localStorage.getItem('sipandu_firebase_config');
+const cfg = JSON.parse(raw);
+const app = initializeApp(cfg);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : (localStorage.getItem('sipandu_app_id') || 'sipandu-app');
+window.__cloud = { db, auth, storage, appId };
+</script>
 
     <div class="max-w-6xl mx-auto space-y-8">
         
@@ -200,7 +214,7 @@
     </div>
 
     <script>
-        let dataLaporan = JSON.parse(localStorage.getItem('laporan_db')) || [];
+        let dataLaporan = [];
         let isEditing = false;
         
         const form = document.getElementById('laporanForm');
@@ -305,11 +319,13 @@
             fileNameDisplay.innerText = "Klik untuk unggah PDF";
         };
 
-        window.hapusData = (id) => {
+        window.hapusData = async (id) => {
             if(confirm('Hapus data ini?')) {
-                dataLaporan = dataLaporan.filter(item => item.id !== id);
-                localStorage.setItem('laporan_db', JSON.stringify(dataLaporan));
-                renderTable(searchInput.value, filterUnit.value);
+                try {
+                    await signInAnonymously(window.__cloud.auth);
+                    const refDoc = doc(window.__cloud.db, "artifacts", window.__cloud.appId, "public", "data", "laporan_unit_kerja", id.toString());
+                    await deleteDoc(refDoc);
+                } catch (e) {}
             }
         };
 
@@ -346,9 +362,9 @@
             }
         });
 
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            const now = Date.now();
             const formData = {
                 jenis: document.getElementById('jenis_laporan').value,
                 unit: document.getElementById('unit_pelayanan').value,
@@ -356,34 +372,50 @@
                 tahun: document.getElementById('tahun').value,
                 pelapor: document.getElementById('pelapor').value,
                 keterangan: document.getElementById('keterangan').value,
+                updatedAt: now
             };
-
-            if (isEditing) {
-                const id = parseInt(document.getElementById('editId').value);
-                const index = dataLaporan.findIndex(d => d.id === id);
-                dataLaporan[index] = { ...dataLaporan[index], ...formData };
-                isEditing = false;
-                btnCancel.click(); // Reset UI mode
-            } else {
-                dataLaporan.unshift({
-                    ...formData,
-                    id: Date.now(),
-                    timestamp: new Date().toLocaleString()
-                });
+            try {
+                await signInAnonymously(window.__cloud.auth);
+                const fileEl = document.getElementById('file_pdf');
+                let fileUrl = "";
+                let fileName = "";
+                if (fileEl && fileEl.files && fileEl.files[0]) {
+                    const f = fileEl.files[0];
+                    const path = `artifacts/${window.__cloud.appId}/public/files/laporan_unit_kerja/${now}_${f.name.replace(/\s+/g,'_')}`;
+                    const r = ref(window.__cloud.storage, path);
+                    await uploadBytes(r, f);
+                    fileUrl = await getDownloadURL(r);
+                    fileName = f.name;
+                }
+                const payload = { ...formData, fileUrl, fileName };
+                if (isEditing) {
+                    const id = document.getElementById('editId').value;
+                    const refDoc = doc(window.__cloud.db, "artifacts", window.__cloud.appId, "public", "data", "laporan_unit_kerja", id);
+                    await updateDoc(refDoc, payload);
+                    isEditing = false;
+                    btnCancel.click();
+                } else {
+                    await addDoc(collection(window.__cloud.db, "artifacts", window.__cloud.appId, "public", "data", "laporan_unit_kerja"), { ...payload, createdAt: now });
+                }
+                form.reset();
+                fileNameDisplay.innerText = "Klik untuk unggah PDF";
+            } catch (err) {
+                alert("Gagal menyimpan ke Cloud");
             }
-
-            localStorage.setItem('laporan_db', JSON.stringify(dataLaporan));
-            form.reset();
-            fileNameDisplay.innerText = "Klik untuk unggah PDF";
-            renderTable();
-            
-            alert(isEditing ? "Data berhasil diperbarui!" : "Data berhasil ditambahkan!");
         });
 
         searchInput.addEventListener('input', () => renderTable(searchInput.value, filterUnit.value));
         filterUnit.addEventListener('change', () => renderTable(searchInput.value, filterUnit.value));
 
-        window.onload = () => renderTable();
+        window.onload = () => {
+            onAuthStateChanged(window.__cloud.auth, () => {
+                const col = collection(window.__cloud.db, "artifacts", window.__cloud.appId, "public", "data", "laporan_unit_kerja");
+                onSnapshot(col, (snap) => {
+                    dataLaporan = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderTable();
+                });
+            });
+        };
     </script>
 </body>
 </html>

@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+import { getStorage, ref, uploadString, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js';
 import { 
   PlusCircle, 
   Search, 
@@ -52,18 +56,25 @@ const App = () => {
     status: 'Diproses'
   });
 
-  // Load data
   useEffect(() => {
-    const savedData = localStorage.getItem('surat_masuk_data_v3');
-    if (savedData) {
-      setSuratList(JSON.parse(savedData));
-    }
+    const raw = window.__firebase_config || localStorage.getItem('sipandu_firebase_config');
+    const cfg = JSON.parse(raw);
+    const app = initializeApp(cfg);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : (localStorage.getItem('sipandu_app_id') || 'sipandu-app');
+    signInAnonymously(auth).catch(() => {});
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      if (!u) return;
+      const col = collection(db, 'artifacts', appId, 'public', 'data', 'surat_masuk');
+      const unsub = onSnapshot(col, (snap) => {
+        setSuratList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      return () => unsub();
+    });
+    return () => unsubAuth();
   }, []);
-
-  // Simpan data
-  useEffect(() => {
-    localStorage.setItem('surat_masuk_data_v3', JSON.stringify(suratList));
-  }, [suratList]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -105,32 +116,65 @@ const App = () => {
     setIsEditing(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nomorSurat || !formData.asalSurat) return;
 
     if (isEditing) {
-      const updatedList = suratList.map(s => {
-        if (s.id === isEditing) {
-          return {
-            ...formData,
-            id: s.id,
-            file: selectedFile || s.file,
-            timestamp: s.timestamp,
-            lastEdited: new Date().toLocaleString('id-ID')
-          };
+      try {
+        const raw = window.__firebase_config || localStorage.getItem('sipandu_firebase_config');
+        const cfg = JSON.parse(raw);
+        const app = initializeApp(cfg);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : (localStorage.getItem('sipandu_app_id') || 'sipandu-app');
+        await signInAnonymously(auth);
+        let fileUrl = null;
+        let fileName = null;
+        if (selectedFile && selectedFile.data) {
+          const isBase64 = typeof selectedFile.data === 'string';
+          const now = Date.now();
+          const path = `artifacts/${appId}/public/files/surat_masuk/${now}_${selectedFile.name.replace(/\s+/g,'_')}`;
+          const r = ref(storage, path);
+          if (isBase64) {
+            await uploadString(r, selectedFile.data, 'data_url');
+          } else {
+            await uploadBytes(r, selectedFile.data);
+          }
+          fileUrl = await getDownloadURL(r);
+          fileName = selectedFile.name;
         }
-        return s;
-      });
-      setSuratList(updatedList);
+        const refDoc = doc(db, 'artifacts', appId, 'public', 'data', 'surat_masuk', isEditing.toString());
+        await updateDoc(refDoc, { ...formData, fileUrl, fileName, lastEdited: new Date().toLocaleString('id-ID') });
+      } catch (err) {}
     } else {
-      const newSurat = {
-        ...formData,
-        id: Date.now(),
-        file: selectedFile,
-        timestamp: new Date().toLocaleString('id-ID')
-      };
-      setSuratList([newSurat, ...suratList]);
+      try {
+        const raw = window.__firebase_config || localStorage.getItem('sipandu_firebase_config');
+        const cfg = JSON.parse(raw);
+        const app = initializeApp(cfg);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : (localStorage.getItem('sipandu_app_id') || 'sipandu-app');
+        await signInAnonymously(auth);
+        let fileUrl = null;
+        let fileName = null;
+        if (selectedFile && selectedFile.data) {
+          const isBase64 = typeof selectedFile.data === 'string';
+          const now = Date.now();
+          const path = `artifacts/${appId}/public/files/surat_masuk/${now}_${selectedFile.name.replace(/\s+/g,'_')}`;
+          const r = ref(storage, path);
+          if (isBase64) {
+            await uploadString(r, selectedFile.data, 'data_url');
+          } else {
+            await uploadBytes(r, selectedFile.data);
+          }
+          fileUrl = await getDownloadURL(r);
+          fileName = selectedFile.name;
+        }
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'surat_masuk'), { ...formData, fileUrl, fileName, timestamp: new Date().toLocaleString('id-ID') });
+      } catch (err) {}
     }
     resetForm();
   };
@@ -150,11 +194,20 @@ const App = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const deleteSurat = (id) => {
-    if (window.confirm('Hapus data surat ini secara permanen?')) {
-      setSuratList(suratList.filter(s => s.id !== id));
+  const deleteSurat = async (id) => {
+    if (!window.confirm('Hapus data surat ini secara permanen?')) return;
+    try {
+      const raw = window.__firebase_config || localStorage.getItem('sipandu_firebase_config');
+      const cfg = JSON.parse(raw);
+      const app = initializeApp(cfg);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : (localStorage.getItem('sipandu_app_id') || 'sipandu-app');
+      await signInAnonymously(auth);
+      const refDoc = doc(db, 'artifacts', appId, 'public', 'data', 'surat_masuk', id.toString());
+      await deleteDoc(refDoc);
       if (isEditing === id) resetForm();
-    }
+    } catch (err) {}
   };
 
   const initiateStatusToggle = (id, currentStatus) => {

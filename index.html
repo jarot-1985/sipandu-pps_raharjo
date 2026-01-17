@@ -70,6 +70,11 @@
             opacity: 1;
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-database-compat.js"></script>
     <script>
         function initIcons() {
             if (typeof lucide !== 'undefined') {
@@ -96,12 +101,36 @@
         window.__firebase_config = JSON.stringify({
             apiKey: "AIzaSyDQiHRDPJNPm-zci3L3X9sipjZCVPl5lqQ",
             authDomain: "sipandu-2872d.firebaseapp.com",
+            databaseURL: "https://sipandu-2872d-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "sipandu-2872d",
-            storageBucket: "sipandu-2872d.appspot.com",
+            storageBucket: "sipandu-2872d.firebasestorage.app",
             messagingSenderId: "948086868716",
             appId: "1:948086868716:web:49d20c5918b890ed5cf3c9",
             measurementId: "G-0MLHGJ411V"
         });
+    </script>
+    <script>
+        (function () {
+            try {
+                if (window.__firebase_config) {
+                    localStorage.setItem('sipandu_firebase_config', window.__firebase_config);
+                }
+                if (window.__app_id) {
+                    localStorage.setItem('sipandu_app_id', window.__app_id);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
+        (function () {
+            try {
+                if (window.firebase && (!window.firebase.apps || !window.firebase.apps.length)) {
+                    var raw = window.__firebase_config;
+                    var cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    window.firebase.initializeApp(cfg);
+                }
+            } catch (e) {}
+        })();
     </script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
