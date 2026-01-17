@@ -67,15 +67,14 @@ function showPage(pageId) {
         'dashboard': `
             <!-- Hero Section -->
             <div class="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-sky-200">
-                <div class="relative z-10 max-w-lg">
-                    <h3 class="text-2xl font-black mb-2 uppercase tracking-tight">Si PANDU</h3>
-                    <p class="text-sky-100 text-sm leading-relaxed mb-6 font-medium">Sistem Informasi Penyimpanan Data Terpadu PPS Raharjo Sragen. <br>
-                    Akses data internal secara cepat dan efisien.</p>
+                <div class="relative z-10 max-w-2xl pr-28">
+                    <h3 class="text-2xl font-black mb-2 uppercase tracking-tight">SIPANDU</h3>
+                    <p class="text-sky-100 text-sm leading-relaxed mb-6 font-bold">Sistem informasi Penyimpanan Data Terpadu (Portal Internal PPS Raharjo Sragen)</p>
                     <div class="flex space-x-3">
                         <div class="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/20 rounded-lg text-[10px] font-bold uppercase tracking-widest">Status: Aktif</div>
                     </div>
                 </div>
-                <i data-lucide="database" class="absolute -right-8 -bottom-8 w-64 h-64 text-white/10 rotate-12"></i>
+                <img src="logo-ppsdri-raharjo.png" alt="Logo PPSDI Raharjo Sragen" class="absolute right-6 bottom-6 w-28 h-28 object-contain opacity-95 drop-shadow-xl rounded-xl bg-white/10 p-2" onerror="this.style.display='none'">
             </div>
 
             <!-- Stats Grid -->
