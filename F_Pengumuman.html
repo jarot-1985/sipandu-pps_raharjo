@@ -229,12 +229,14 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { initializeFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
     let app = null;
     let auth = null;
     let db = null;
     let appId = "info-portal-system";
     let useCloud = true;
+    let storage = null;
 
     try {
       let rawConfig = null;
@@ -251,6 +253,7 @@
         app = initializeApp(parsedConfig);
         auth = getAuth(app);
         db = initializeFirestore(app, { databaseId: "sipandu" });
+        storage = getStorage(app);
         if (typeof __app_id !== "undefined" && __app_id) {
           appId = __app_id;
         } else if (window.__app_id) {
@@ -268,6 +271,7 @@
     let currentPdfUrl = "";
     let currentPdfName = "";
     let currentPdfData = "";
+    let currentPdfFile = null;
 
     const notifEl = document.getElementById("notif");
     const tabListBtn = document.getElementById("tab-list-btn");
@@ -400,6 +404,7 @@
       currentPdfUrl = "";
       currentPdfName = "";
       currentPdfData = "";
+      currentPdfFile = file;
       const reader = new FileReader();
       reader.onload = () => {
         currentPdfData = reader.result || "";
@@ -423,6 +428,24 @@
       e.preventDefault();
       const now = Date.now();
       const existing = editId ? dataInformasi.find(i => i.id === editId) : null;
+
+      // Upload ke Firebase Storage jika di mode cloud dan ada file baru
+      try {
+        if (useCloud && currentUser && db && storage && currentPdfFile) {
+          const safeName = currentPdfFile.name.replace(/\s+/g, "_");
+          const path = `artifacts/${appId}/public/files/portal_informasi/${now}_${safeName}`;
+          const ref = storageRef(storage, path);
+          await uploadBytes(ref, currentPdfFile, { contentType: "application/pdf" });
+          const url = await getDownloadURL(ref);
+          currentPdfUrl = url;
+          currentPdfName = currentPdfFile.name;
+        }
+      } catch (err) {
+        console.error("Upload Storage Error:", err);
+        showNotif("Gagal mengunggah PDF ke Storage", "error");
+        return;
+      }
+
       const payload = {
         no: fieldNo.value.trim(),
         tanggalPublikasi: fieldTanggal.value,
@@ -668,6 +691,28 @@
             dataInformasi = parsed.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           }
         }
+        
+        // Inject Default Data
+        const defaultData = {
+          id: "def-001",
+          no: "001/PPSDI/2026",
+          judul: "Maintenance Server Rutin",
+          konten: "Akan dilakukan pemeliharaan sistem pada tanggal 20 Januari 2026 pukul 02:00 UTC. Layanan mungkin tidak tersedia untuk sementara. Mohon maaf atas ketidaknyamanannya.",
+          tanggalPublikasi: "2026-01-20",
+          prioritas: "Penting",
+          statusPublikasi: "Publish",
+          pdfName: "jadwal_maintenance.pdf",
+          pdfUrl: "https://firebasestorage.googleapis.com/v0/b/sipandu-2872d.appspot.com/o/announcements%2Fjadwal_maintenance.pdf?alt=media",
+          createdAt: 1737105600000,
+          updatedAt: 1737105900000
+        };
+        
+        const exists = dataInformasi.some(d => d.no === defaultData.no);
+        if (!exists) {
+          dataInformasi.push(defaultData);
+          dataInformasi.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        }
+
       } catch (err) {
         console.error("Local load error:", err);
       }
@@ -709,204 +754,6 @@
   </script>
   </body>
 </html>
-    pdfName: '',
-    pdfUrl: '' 
-  };
-
-  const [form, setForm] = useState(initialForm);
-
-  const prioritasOptions = ['Normal', 'Penting', 'Segera'];
-  const statusOptions = ['Draft', 'Publish', 'Arsip'];
-
-  // Manajemen Autentikasi (Rule 3)
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) { console.error("Auth Error:", err); }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Sinkronisasi Data Real-time (Rule 1 & 2)
-  useEffect(() => {
-    if (!user) return;
-    const q = collection(db, 'artifacts', appId, 'public', 'data', 'portal_informasi');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setDataInformasi(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-    }, (err) => {
-      console.error("Firestore Error:", err);
-      showNotif("Gagal sinkronisasi data", "error");
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  const showNotif = (msg, type = 'success') => {
-    setNotif({ show: true, msg, type });
-    setTimeout(() => setNotif({ show: false, msg: '', type: 'success' }), 3000);
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        showNotif("Hanya file PDF yang diizinkan", "error");
-        return;
-      }
-      const blobUrl = URL.createObjectURL(file);
-      setForm({ ...form, pdfName: file.name, pdfUrl: blobUrl });
-      showNotif("File PDF siap diunggah");
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-
-    try {
-      const payload = { 
-        ...form, 
-        updatedAt: Date.now(),
-        createdAt: editId ? (dataInformasi.find(i => i.id === editId)?.createdAt || Date.now()) : Date.now()
-      };
-
-      if (editId) {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'portal_informasi', editId);
-        await updateDoc(docRef, payload);
-        showNotif("Informasi diperbarui");
-      } else {
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'portal_informasi'), payload);
-        showNotif("Informasi berhasil disimpan");
-      }
-
-      resetForm();
-      setActiveTab('list');
-    } catch (err) {
-      showNotif("Gagal menyimpan data", "error");
-    }
-  };
-
-  const handleEdit = (item) => {
-    setForm({ ...item });
-    setEditId(item.id);
-    setActiveTab('form');
-  };
-
-  const handleDelete = async (id) => {
-    if (!user) return;
-    const confirmDelete = window.confirm("Hapus data ini secara permanen dari server cloud?");
-    if (confirmDelete) {
-      try {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'portal_informasi', id);
-        await deleteDoc(docRef);
-        showNotif("Data Berhasil Dihapus", "success");
-        if (editId === id) resetForm();
-      } catch (err) {
-        showNotif("Gagal menghapus data", "error");
-      }
-    }
-  };
-
-  const handleViewPDF = (url) => {
-    if (!url) {
-      showNotif("File tidak tersedia", "error");
-      return;
-    }
-    window.open(url, '_blank');
-  };
-
-  const handleDownloadPDF = (url, fileName) => {
-    if (!url) return;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName || 'dokumen.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const resetForm = () => {
-    if (form.pdfUrl && form.pdfUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(form.pdfUrl);
-    }
-    setForm(initialForm);
-    setEditId(null);
-  };
-
-  const filteredData = useMemo(() => {
-    return dataInformasi.filter(item => 
-      item.judul?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.konten?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [dataInformasi, searchTerm]);
-
-  if (loading) return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50">
-      <Loader2 className="animate-spin text-indigo-600 mb-4" size={40} />
-      <p className="text-slate-400 font-bold tracking-widest text-xs uppercase text-center px-4">
-        Menghubungkan ke Cloud Database...
-      </p>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
-      {/* Toast Notification */}
-      {notif.show && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${notif.type === 'error' ? 'bg-rose-600' : 'bg-slate-900'} text-white`}>
-          {notif.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} className="text-emerald-400" />}
-          <span className="text-sm font-bold uppercase tracking-tight">{notif.msg}</span>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-200">
-            <FileText size={22} />
-          </div>
-          <div>
-            <h1 className="font-black text-sm uppercase tracking-tighter leading-none text-slate-800">Manajemen Informasi</h1>
-            <p className="text-[9px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1.5 mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Sipandu Cloud Live
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setActiveTab('list')}
-            className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'list' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-          >
-            Tabel Data
-          </button>
-          <button 
-            onClick={() => { resetForm(); setActiveTab('form'); }}
-            className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'form' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 text-white hover:bg-indigo-700'}`}
-          >
-            <Plus size={14} /> {editId ? 'Ubah Data' : 'Tambah Baru'}
-          </button>
-        </div>
-      </header>
-
-      <main className="p-6 md:p-10 max-w-[1200px] mx-auto">
-        {activeTab === 'form' ? (
-          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
-            <div className="bg-slate-900 px-10 py-8 text-white">
-              <h2 className="text-xl font-black uppercase tracking-tight">{editId ? 'Perbarui Informasi' : 'Tambah Informasi Baru'}</h2>
-              <p className="text-slate-400 text-xs mt-1 font-medium italic">Data tersinkronisasi otomatis dengan server Sipandu.</p>
             </div>
             
             <form onSubmit={handleSubmit} className="p-10 space-y-8">

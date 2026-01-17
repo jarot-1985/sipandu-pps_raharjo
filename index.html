@@ -77,6 +77,32 @@
             }
         }
     </script>
+    <script>
+        (function () {
+            try {
+                var stored = localStorage.getItem('sipandu_firebase_config');
+                if (stored) {
+                    window.__firebase_config = stored;
+                }
+                var appId = localStorage.getItem('sipandu_app_id');
+                if (appId) {
+                    window.__app_id = appId;
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        const raw = window.__firebase_config;
+        if (raw) {
+            const cfg = JSON.parse(raw);
+            const app = initializeApp(cfg);
+            isSupported().then((ok) => {
+                if (ok) getAnalytics(app);
+            });
+        }
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
@@ -88,7 +114,7 @@
             <div class="p-6 bg-sky-600/50 backdrop-blur-md flex items-center justify-between border-b border-sky-400/30">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                        <i data-lucide="shield-check" class="text-sky-500 w-6 h-6"></i>
+                        <img src="maskot-sipandu.png" alt="Logo Sipandu" class="w-8 h-8 object-contain">
                     </div>
                     <div>
                         <h1 class="text-lg font-black tracking-tight leading-none">Si PANDU</h1>
@@ -207,13 +233,18 @@
                 <!-- Hero Section -->
                 <div class="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-sky-200">
                     <div class="relative z-10 max-w-2xl pr-28">
-                        <h3 class="text-2xl font-black mb-2 uppercase tracking-tight">SIPANDU</h3>
-                        <p class="text-sky-100 text-sm leading-relaxed mb-6 font-bold">Sistem informasi Penyimpanan Data Terpadu (Portal Internal PPS Raharjo Sragen)</p>
+                        <div class="flex items-start gap-3 mb-6">
+                            <img src="maskot-sipandu.png" alt="Logo Sipandu" class="w-10 h-10 object-contain rounded-lg bg-white/10 p-1 drop-shadow" onerror="this.style.display='none'">
+                            <div>
+                                <h3 class="text-2xl font-black uppercase tracking-tight">SIPANDU</h3>
+                                <p class="text-sky-100 text-sm leading-relaxed font-bold">Sistem informasi Penyimpanan Data Terpadu <br>
+                                    (Portal Internal PPS Raharjo Sragen)</p>
+                            </div>
+                        </div>
                         <div class="flex space-x-3">
                             <div class="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/20 rounded-lg text-[10px] font-bold uppercase tracking-widest">Status: Aktif</div>
                         </div>
                     </div>
-                    <img src="logo-ppsdri-raharjo.png" alt="Logo PPSDI Raharjo Sragen" class="absolute right-6 bottom-6 w-28 h-28 object-contain opacity-95 drop-shadow-xl rounded-xl bg-white/10 p-2" onerror="this.style.display='none'" />
                 </div>
 
                 <!-- Stats Grid -->
