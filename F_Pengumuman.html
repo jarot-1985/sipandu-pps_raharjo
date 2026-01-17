@@ -698,26 +698,6 @@
           }
         }
         
-        // Inject Default Data
-        const defaultData = {
-          id: "def-001",
-          no: "001/PPSDI/2026",
-          judul: "Maintenance Server Rutin",
-          konten: "Akan dilakukan pemeliharaan sistem pada tanggal 20 Januari 2026 pukul 02:00 UTC. Layanan mungkin tidak tersedia untuk sementara. Mohon maaf atas ketidaknyamanannya.",
-          tanggalPublikasi: "2026-01-20",
-          prioritas: "Penting",
-          statusPublikasi: "Publish",
-          pdfName: "jadwal_maintenance.pdf",
-          pdfUrl: "https://firebasestorage.googleapis.com/v0/b/sipandu-2872d.appspot.com/o/announcements%2Fjadwal_maintenance.pdf?alt=media",
-          createdAt: 1737105600000,
-          updatedAt: 1737105900000
-        };
-        
-        const exists = dataInformasi.some(d => d.no === defaultData.no);
-        if (!exists) {
-          dataInformasi.push(defaultData);
-          dataInformasi.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        }
 
       } catch (err) {
         console.error("Local load error:", err);

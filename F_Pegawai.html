@@ -42,7 +42,7 @@ const firebaseConfig = JSON.parse(window.__firebase_config || (window.parent && 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'pegawai-monitoring-jateng';
+const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : ((window.parent && window.parent.__app_id) ? window.parent.__app_id : 'sipandu-app');
 
 const PANGKAT_GOLONGAN = [
   { group: "Lainnya", options: [
