@@ -67,12 +67,20 @@ function showPage(pageId) {
         'dashboard': `
             <!-- Hero Section -->
             <div class="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-sky-200">
-                <div class="relative z-10 max-w-2xl pr-28">
-                    <div class="flex items-start gap-3 mb-6">
-                        <img src="maskot-sipandu.png" alt="Logo Sipandu" class="w-14 h-14 object-contain rounded-lg bg-white/10 p-1 drop-shadow" onerror="this.style.display='none'">
+                <div class="relative z-10 max-w-5xl">
+                    <div class="flex items-center gap-8 mb-6">
+                        <div class="relative group shrink-0">
+                            <div class="absolute -inset-2 bg-white/20 rounded-3xl blur-xl opacity-25 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                            <img src="maskot-sipandu.png" alt="Logo Sipandu" class="relative w-48 h-48 object-contain rounded-3xl bg-white/10 p-3 shadow-2xl ring-2 ring-white/40" onerror="this.style.display='none'">
+                        </div>
                         <div>
-                            <h3 class="text-2xl font-black uppercase tracking-tight">SIPANDU</h3>
-                            <p class="text-sky-100 text-sm leading-relaxed font-bold">Sistem informasi Penyimpanan Data Terpadu <br> (Portal Internal PPS Raharjo Sragen)</p>
+                            <h3 class="text-7xl font-black uppercase tracking-tighter mb-4 drop-shadow-2xl">SIPANDU</h3>
+                            <p class="text-3xl font-bold text-sky-50 leading-tight mb-2 whitespace-nowrap">
+                                Sistem Informasi Penyimpanan Data Terpadu
+                            </p>
+                            <p class="text-xl font-medium text-sky-100/90 italic">
+                                (Portal Internal PPS Raharjo Sragen)
+                            </p>
                         </div>
                     </div>
                     <div class="flex space-x-3">
@@ -81,40 +89,71 @@ function showPage(pageId) {
                 </div>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4"><i data-lucide="users" class="w-5 h-5"></i></div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Pegawai</h4>
-                    <p class="text-3xl font-black text-slate-800">45</p>
+            <!-- Gallery Slider (Replacing Stats Grid) -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">Galeri & Dokumentasi</h4>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Geser Otomatis</span>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div class="w-10 h-10 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center mb-4"><i data-lucide="user-check" class="w-5 h-5"></i></div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">PM Aktif</h4>
-                    <p class="text-3xl font-black text-slate-800">120</p>
-                </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4"><i data-lucide="mail" class="w-5 h-5"></i></div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Surat Masuk</h4>
-                    <p class="text-3xl font-black text-slate-800">12</p>
-                </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capaian Laporan</h4>
-                    <p class="text-3xl font-black text-slate-800">100<span class="text-sm">%</span></p>
+                <div class="slider-container shadow-xl border-4 border-white">
+                    <div class="slider-track animate-slide">
+                        <!-- GANTI URL GAMBAR DI SINI SEWAKTU-WAKTU (SLIDE 1-6) -->
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200" alt="Slider 1">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Kegiatan Pelayanan PM</h5>
+                                <p class="text-xs opacity-80">Dokumentasi kegiatan harian di PPS Raharjo Sragen</p>
+                            </div>
+                        </div>
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200" alt="Slider 2">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Rapat Koordinasi Internal</h5>
+                                <p class="text-xs opacity-80">Sinkronisasi data dan evaluasi bulanan tim IT</p>
+                            </div>
+                        </div>
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1200" alt="Slider 3">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Kunjungan Kerja Lapangan</h5>
+                                <p class="text-xs opacity-80">Monitoring unit pelayanan di seluruh wilayah Sragen</p>
+                            </div>
+                        </div>
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1200" alt="Slider 4">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Fasilitas Unit Pelayanan</h5>
+                                <p class="text-xs opacity-80">Kebersihan dan kenyamanan prioritas utama kami</p>
+                            </div>
+                        </div>
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200" alt="Slider 5">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Integrasi Data Digital</h5>
+                                <p class="text-xs opacity-80">Pengelolaan data terpadu untuk efisiensi birokrasi</p>
+                            </div>
+                        </div>
+                        <div class="slider-item relative">
+                            <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200" alt="Slider 6">
+                            <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                                <h5 class="font-black text-lg">Tim IT PPS Sragen</h5>
+                                <p class="text-xs opacity-80">Profesionalitas dalam mendukung sistem informasi</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Info Cards -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all space-y-4">
                     <div class="flex items-center space-x-3 mb-2">
                         <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-sky-500"></i>
                         <h4 class="font-black text-sm uppercase tracking-wider">Navigasi Dropdown</h4>
                     </div>
                     <p class="text-sm text-slate-500 leading-relaxed">Klik pada nama kelompok kerja di sidebar untuk membuka sub-menu dan mengakses data spesifik yang Anda butuhkan.</p>
                 </div>
-                <div class="bg-sky-50 p-8 rounded-3xl border border-sky-100 shadow-sm space-y-4">
+                <div class="bg-sky-50 p-8 rounded-3xl border border-sky-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all space-y-4">
                     <div class="flex items-center space-x-3 mb-2">
                         <i data-lucide="info" class="w-5 h-5 text-sky-600"></i>
                         <h4 class="font-black text-sm uppercase tracking-wider text-sky-800">Satu Pintu</h4>
@@ -331,8 +370,34 @@ function showPage(pageId) {
                 <h3 class="text-xl font-black mb-4">Laporan BMD</h3>
                 <p class="text-slate-600">Halaman laporan BMD akan segera tersedia.</p>
             </div>
+        `,
+        'settings': `
+            <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="settings" class="w-5 h-5 text-sky-600"></i>
+                    <h3 class="text-xl font-black text-slate-800">Pengaturan Slider Gambar</h3>
+                </div>
+                <p class="text-slate-600">Masukkan URL gambar untuk setiap slide. Gunakan URL gambar langsung (misal: dari Unsplash, Imgur, dll.).</p>
+                <form id="sliderSettingsForm" class="space-y-4">
+                    ${Array.from({ length: 6 }).map((_, i) => `
+                        <div>
+                            <label for="slideImage${i + 1}" class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">URL Gambar Slide ${i + 1}</label>
+                            <input type="url" id="slideImage${i + 1}" name="slideImage${i + 1}" class="w-full p-3.5 bg-slate-50 border-2 border-slate-200 focus:border-sky-300 rounded-2xl font-bold text-sm outline-none transition-all" placeholder="https://example.com/image${i + 1}.jpg">
+                        </div>
+                    `).join('')}
+                    <button type="submit" class="w-full bg-sky-600 text-white font-bold py-3 rounded-2xl hover:bg-sky-700 transition-colors">Simpan Pengaturan</button>
+                </form>
+            </div>
         `
     };
+
+    if (pageId === 'settings') {
+        const password = prompt('Masukkan sandi untuk mengakses pengaturan:');
+        if (password !== '888') {
+            alert('Sandi salah! Akses ditolak.');
+            return; // Jangan tampilkan halaman pengaturan
+        }
+    }
 
     const content = pageContents[pageId] || '<div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"><h3 class="text-xl font-black mb-4">Halaman Tidak Ditemukan</h3><p class="text-slate-600">Konten untuk halaman ini belum tersedia.</p></div>';
     document.getElementById('page-content').innerHTML = content;
@@ -340,7 +405,86 @@ function showPage(pageId) {
     if (window.innerWidth < 1024) toggleSidebar();
     initIcons();
     if (pageId === 'mutasi-pm') initMutasiForm();
+    if (pageId === 'settings') initSliderSettingsForm();
 }
+
+// Fungsi untuk menginisialisasi form pengaturan slider
+function initSliderSettingsForm() {
+    const form = document.getElementById('sliderSettingsForm');
+    if (!form) return;
+
+    // Muat URL gambar yang tersimpan
+    const savedImageUrls = JSON.parse(localStorage.getItem('sliderImageUrls')) || [];
+    for (let i = 0; i < 6; i++) {
+        const input = document.getElementById(`slideImage${i + 1}`);
+        if (input && savedImageUrls[i]) {
+            input.value = savedImageUrls[i];
+        }
+    }
+
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const newImageUrls = [];
+        for (let i = 0; i < 6; i++) {
+            const input = document.getElementById(`slideImage${i + 1}`);
+            if (input && input.value) {
+                newImageUrls.push(input.value);
+            } else {
+                newImageUrls.push(''); // Simpan string kosong jika tidak ada URL
+            }
+        }
+        localStorage.setItem('sliderImageUrls', JSON.stringify(newImageUrls));
+        alert('URL gambar slider berhasil disimpan!');
+        // Opsional: perbarui slider di dashboard secara langsung
+        showPage('dashboard'); 
+    });
+}
+
+// Fungsi untuk memuat gambar slider dari localStorage saat dashboard dimuat
+function loadSliderImages() {
+    const savedImageUrls = JSON.parse(localStorage.getItem('sliderImageUrls')) || [];
+    const defaultImageUrls = [
+        "https://drive.google.com/uc?export=download&id=1gqpsBofXZIHAmZCCt_XeHkqj8MjdsWYs",
+        "https://drive.google.com/uc?export=download&id=11mQCi5h3sikm4WQuaDtf7U-SiiPULXyH",
+        "https://drive.google.com/uc?export=download&id=1wkgiGR1U76m55rsh_47hED4j58uLlWxZ",
+        "https://drive.google.com/uc?export=download&id=1cf_h2eqaoiPrEzh96xfZJdQpZ26y5O_y",
+        "https://drive.google.com/uc?export=download&id=1SbT-1S2KVg3BJswr1M0YhCKVmB3hBvmn",
+        "https://drive.google.com/uc?export=download&id=16duM3ujQBF_PfpDoIfcJGW-ytgqJgL-5"
+    ];
+
+    const imageUrlsToUse = savedImageUrls.filter(url => url !== '').length > 0 ? savedImageUrls : defaultImageUrls;
+
+    let sliderItemsHtml = '';
+    imageUrlsToUse.forEach((url, i) => {
+        if (url) {
+            sliderItemsHtml += `
+                <div class="slider-item relative">
+                    <img src="${url}" alt="Slider ${i + 1}">
+                    <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/60 to-transparent text-white">
+                        <h5 class="font-black text-lg">Dokumentasi ${i + 1}</h5>
+                        <p class="text-xs opacity-80">${i % 2 === 0 ? 'Sistem Informasi Penyimpanan Data Terpadu' : 'Portal Internal PPS Raharjo Sragen'}</p>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    // Perbarui konten slider di dashboard
+    const dashboardContent = document.getElementById('page-content');
+    if (dashboardContent && dashboardContent.innerHTML.includes('slider-container')) {
+        const sliderTrack = dashboardContent.querySelector('.slider-track');
+        if (sliderTrack) {
+            sliderTrack.innerHTML = sliderItemsHtml;
+        }
+    }
+}
+
+// Panggil loadSliderImages saat halaman dimuat pertama kali
+document.addEventListener('DOMContentLoaded', () => {
+    initIcons();
+    showPage('dashboard'); // Tampilkan dashboard secara default
+    loadSliderImages(); // Muat gambar slider setelah dashboard ditampilkan
+});
 
 function initMutasiForm() {
     const form = document.getElementById('mutasiForm');
